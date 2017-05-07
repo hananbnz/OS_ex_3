@@ -1,9 +1,7 @@
-//
-// Created by reuveny on 5/7/17.
-//
+
 
 #include <cstdio>
-
+#include "string"
 int main(void)
 {
 	printf("search running....\n");
@@ -11,3 +9,6 @@ int main(void)
     printf("found 'osTargil' 'sos' 'sos'\n");
     printf("search finished...\n");
 }
+
+
+void prepareToMap(std::string input_txt);
