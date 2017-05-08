@@ -11,7 +11,7 @@
 
 using namespace std;
 
-class FileNameKey : public k1Base
+class FileNameKey : public k1Base, public k2Base, public k3Base
 {
 public:
     /**
@@ -30,12 +30,16 @@ public:
 
     bool operator<(const k1Base &other) const;
 //    bool operator==()(const k1Base &other) const; TODO decide if want to impelemnt
+    bool operator<(const k2Base &other) const;
+
+    bool operator<(const k3Base &other) const;
 
 private:
     string _fileName;
 };
 
-class WordSearch: public v1Base
+
+class WordSearch: public v1Base, public v2Base, public v3Base
 {
 public:
     /**
@@ -57,6 +61,7 @@ private:
 
 };
 
+
 ///////////////////////// class functions implementation //////////////////////
 
 /**
@@ -64,7 +69,7 @@ private:
  * @param other
  * @return
  */
-bool FileNameKey::operator<(const k1Base &other) const //TODO Does this fileNameKey change works???
+bool FileNameKey::operator<(const k1Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
@@ -77,6 +82,31 @@ bool FileNameKey::operator<(const k1Base &other) const //TODO Does this fileName
     return false;
 }
 
+bool FileNameKey::operator<(const k2Base &other) const
+{
+    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
+//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+
+    if(res < 0)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool FileNameKey::operator<(const k3Base &other) const
+{
+    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
+//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+
+    if(res < 0)
+    {
+        return true;
+    }
+    return false;
+}
 
 
 /////////////////////////////// The Search program /////////////////////////////
