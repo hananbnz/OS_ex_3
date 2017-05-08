@@ -19,7 +19,7 @@ public:
      */
     FileNameKey();
 
-    FileNameKey(char * file_name) const {_fileName = file_name;};
+    FileNameKey(char * file_name)  {_fileName = file_name;};
 
     /**
      * A FileNameKey destructor.
@@ -28,7 +28,7 @@ public:
 
     string get_file_name() const { return _fileName;};
 
-    bool operator<(const FileNameKey &other) const;
+    bool operator<(const k1Base &other) const;
 //    bool operator==()(const k1Base &other) const; TODO decide if want to impelemnt
 
 private:
@@ -43,7 +43,7 @@ public:
      */
     WordSearch();
 
-    WordSearch(char * word_search) const {_word_search = word_search;};
+    WordSearch(char * word_search)  {_word_search = word_search;};
 
     /**
      * A FileNameKey destructor.
@@ -64,9 +64,11 @@ private:
  * @param other
  * @return
  */
-bool operator<(const FileNameKey &other) const //TODO Does this fileNameKey change works???
+bool FileNameKey::operator<(const k1Base &other) const //TODO Does this fileNameKey change works???
 {
-    int res = strcmp(this->get_file_name(), other.get_file_name());
+    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
+//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
 
     if(res < 0)
     {
@@ -93,7 +95,7 @@ void thread_library_function_fail(string text)
 
 IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 {
-    IN_ITEMS_VEC input_items_vec(numOfArg - 2, NULL); // new IN_ITEMS_VEC;
+    IN_ITEMS_VEC input_items_vec{}; // new IN_ITEMS_VEC;
     //TODO make pairs of (K1,V1), where V1 is the first arg - the word to search
     // and the K1's are the filenames arguments.
     WordSearch* v1 = new WordSearch(programArguments[1]);
