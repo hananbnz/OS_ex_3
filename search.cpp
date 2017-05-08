@@ -17,14 +17,14 @@ public:
     /**
      * A default FileNameKey constructor.
      */
-    FileNameKey();
+    FileNameKey(){};
 
     FileNameKey(char * file_name)  {_fileName = file_name;};
 
     /**
      * A FileNameKey destructor.
      */
-    ~FileNameKey();
+    ~FileNameKey(){};
 
     string get_file_name() const { return _fileName;};
 
@@ -41,14 +41,14 @@ public:
     /**
      * A default FileNameKey constructor.
      */
-    WordSearch();
+    WordSearch(){};
 
     WordSearch(char * word_search)  {_word_search = word_search;};
 
     /**
      * A FileNameKey destructor.
      */
-    ~WordSearch();
+    ~WordSearch(){};
 
     string get_word() const { return _word_search;};
 
@@ -95,7 +95,7 @@ void thread_library_function_fail(string text)
 
 IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 {
-    IN_ITEMS_VEC input_items_vec{}; // new IN_ITEMS_VEC;
+    IN_ITEMS_VEC input_items_vec (numOfArg-2); // TODO check intialize values
     //TODO make pairs of (K1,V1), where V1 is the first arg - the word to search
     // and the K1's are the filenames arguments.
     WordSearch* v1 = new WordSearch(programArguments[1]);
