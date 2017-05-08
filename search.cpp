@@ -108,7 +108,7 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
     return input_items_vec;
 
 }
-
+///
 
 int main(int argc, char * argv[])
 {
