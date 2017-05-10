@@ -109,7 +109,7 @@ bool FileNameKey::operator<(const k3Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+    int res = strcmp(this->get_file_name(), other_file.get_file_name());
 
     if(res < 0)
     {
