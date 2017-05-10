@@ -121,20 +121,32 @@ bool FileNameKey::operator<(const k3Base &other) const
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val)
 {
     const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
+    const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
+    string s2 = (string)word_val->get_word();
     DIR *dir = opendir(file_key->get_file_name());
     if(dir)
     {
         struct dirent *ent;
         while((ent = readdir(dir)) != NULL)
         {
-            cout << (ent->d_name);
+            string s1 = (string)ent->d_name;
+            if (s1.find(s2) != std::string::npos)
+            {
+                FileNameKey* k2 = FileNameKey(s1.c_str());//TODO
+                WordSearch* v2 = WordSearch(s2.c_str());
+                Emit2(k2, v2);
+//                std::cout << "found!" << '\n';
+            }
         }
     }
 }
 
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals)
 {
-
+    const FileNameKey* k3 = dynamic_cast<const FileNameKey*>(key);
+    unsigned long list_size = vals.size();
+    const WordSearch* v3 = dynamic_cast<const WordSearch*>(list_size);
+    Emit3(k3, v3);
 }
 
 /////////////////////////////// The Search program /////////////////////////////
@@ -182,10 +194,40 @@ int main(int argc, char * argv[])
 
     }
     IN_ITEMS_VEC mapInput = prepareToMap(argv, argc);
+    MapReduceSearch m;
+    OUT_ITEMS_VEC output_vector;
+    output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check values
+
+    for (int i = 0; i < output_vector.size() ; ++i)
+    {
+        const FileNameKey* name = dynamic_cast<const FileNameKey*>(output_vector[i].first);
+        const WordSearch*  num = dynamic_cast<const WordSearch*>(output_vector[i].second);
+        int number_of_appearance = stoi(num->get_word());
+        for (int j = 0; j < number_of_appearance ; ++j)
+        {
+            printf("%s ", name->get_file_name());
+        }
+    }
+    //TODO release memory
+
+//    DIR *dir = opendir("/cs/usr/reuveny/safe/OS/ex_3/os2015/exercise");
+//    if(dir)
+//    {
+//        struct dirent *ent;
+//        while((ent = readdir(dir)) != NULL)
+//        {
+//            string s1 = (string)ent->d_name;
+//            if (s1.find("os") != std::string::npos)
+//            {
+//                std::cout << s1 <<" found!" << '\n';
+//            }
+//        }
+//    }
 //    printf("search running....\n");
 //    printf("search for 'os' in os2015/exercise blabla myFolder\n");
 //    printf("found 'osTargil' 'sos' 'sos'\n");
 //    printf("search finished...\n");
+
 }
 
 
