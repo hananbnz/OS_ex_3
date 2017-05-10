@@ -6,6 +6,7 @@
 //#include "string"
 #include <stdbool.h>
 #include <cstring>
+#include <dirent.h>
 #include "MapReduceClient.h"
 #include "MapReduceFramework.h"
 
@@ -26,7 +27,7 @@ public:
      */
     ~FileNameKey(){};
 
-    string get_file_name() const { return _fileName;};
+    char* get_file_name() const { return _fileName;};
 
     bool operator<(const k1Base &other) const;
 //    bool operator==()(const k1Base &other) const; TODO decide if want to impelemnt
@@ -35,7 +36,7 @@ public:
     bool operator<(const k3Base &other) const;
 
 private:
-    string _fileName;
+    char* _fileName;
 };
 
 
@@ -62,6 +63,14 @@ private:
 };
 
 
+class MapReduceSearch: public MapReduceBase
+{
+    void Map(const k1Base *const key, const v1Base *const val);
+
+    void Reduce(const k2Base *const key, const V2_VEC &vals);
+
+};
+
 ///////////////////////// class functions implementation //////////////////////
 
 /**
@@ -73,7 +82,8 @@ bool FileNameKey::operator<(const k1Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+    int res = strcmp(this->get_file_name(), other_file.get_file_name());//TODO changed to char*
+    //int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
 
     if(res < 0)
     {
@@ -86,7 +96,7 @@ bool FileNameKey::operator<(const k2Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+    int res = strcmp(this->get_file_name(), other_file.get_file_name());
 
     if(res < 0)
     {
@@ -108,6 +118,24 @@ bool FileNameKey::operator<(const k3Base &other) const
     return false;
 }
 
+void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val)
+{
+    const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
+    DIR *dir = opendir(file_key->get_file_name());
+    if(dir)
+    {
+        struct dirent *ent;
+        while((ent = readdir(dir)) != NULL)
+        {
+            cout << (ent->d_name);
+        }
+    }
+}
+
+void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals)
+{
+
+}
 
 /////////////////////////////// The Search program /////////////////////////////
 
@@ -138,7 +166,12 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
     return input_items_vec;
 
 }
+
+
 ///
+/// \param argc
+/// \param argv
+/// \return
 
 int main(int argc, char * argv[])
 {
