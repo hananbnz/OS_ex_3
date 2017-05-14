@@ -12,17 +12,22 @@ using namespace std;
 
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
-typedef vector<v2Base*> shuffled_vec;
+typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
+typedef std::pair<k2Base*, shuffled_vec> shuffled_item;
 
 
 //create next pair variable
 int next_pair_to_read = 0;
+
+
 ///////////////////////   lockers /////////////////////////////////////////
 pthread_mutex_t pthreadToContainer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 sem_t* shuffle_sem;
+
+bool finished_shuffle = false;
 
 //lock/unlock result varaiable
 int res;
@@ -32,6 +37,9 @@ IN_ITEMS_VEC input_vec;
 map<pthread_t, mapped_vector> pthreadToContainer;
 
 map<k2Base*, shuffled_vec> shuffledContainer;
+
+vector<shuffled_item> shuffledVector;
+
 
 int finishedMapThreads = -1;
 
@@ -78,9 +86,11 @@ void shuffle( )
                 }
             }
             continue;
+        }
     }
-    }
-    pthread_exit(0);
+    finished_shuffle = true;
+    next_pair_to_read = 0;
+//    pthread_exit(0);
 }
 
 unsigned long set_chunk_size()
@@ -133,6 +143,54 @@ void *ExecMapFunc(void* mapReduce)
     }
     // TODO need variable to
     finishedMapThreads --;
+//    pthread_exit(0);
+}
+
+void prepare_to_reduce()
+{
+    for (auto it = shuffledContainer.begin(); it != shuffledContainer.end();
+         ++it)
+    {
+        shuffledVector.push_back(shuffled_item(it->first, it->second));
+    }
+}
+
+void *ExecReduceFunc(void* mapReduce)
+{
+    //create a container for each thread
+    mapped_vector* newMapVec = new mapped_vector;
+    pthreadToContainer.insert(pair<pthread_t,
+            mapped_vector>(pthread_self(), newMapVec));
+    // TODO the execmap func lock and unlock mutex and than map in mapReduce
+    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
+    while (true)
+    {
+        if(next_pair_to_read >= input_vec.size())
+        {
+            break;
+        }
+        //locking mutex
+        res  = pthread_mutex_lock(&nextValue_mutex);
+        unsigned long current_chunk_size = set_chunk_size();
+        int begin = next_pair_to_read;
+        unsigned long end = next_pair_to_read + current_chunk_size;
+        next_pair_to_read += current_chunk_size;
+        //unlocking mutex
+        res  = pthread_mutex_unlock(&nextValue_mutex);
+
+
+        for (int i = begin; i < end; ++i)
+        {
+            // Reading the pairs in the input vector one-by-one to map
+            mapReduce1.Reduce(shuffledVector[i].first, shuffledVector[i].second);
+
+        }
+
+        // thread will take CHUNK (or the last reminder) and read
+        // TODO lock mutex if here or before the loop
+    }
+    // TODO need variable to
+    finishedMapThreads --;
     pthread_exit(0);
 }
 
@@ -144,12 +202,14 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     int sem_res = sem_init(shuffle_sem, 0, 0);
     if(sem_res < 0)
     {
-        // TODO error initializg semaphore
+        // TODO error initializing semaphore
     }
     finishedMapThreads = multiThreadLevel;
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
     input_vec = itemsVec;
+
+    //Map part
     for (int i = 0; i <multiThreadLevel ; ++i)
     {
         // TODO creation of pthread
@@ -161,18 +221,28 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     // create the map size multiThreadLevel each with key - thread ID, val -
     // the thread ID container
     // check about the data structure that every container is in a different location.
-    //create framework internal structure
+    // create framework internal structure
 
     if(pthreadToContainer.size() >= multiThreadLevel)
     {
         //unlocking mutex
         res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
     }
-    // TODO - implement the shuffle func - will use semaphore with inserting
     // to map
     pthread_t* shuffleThread = NULL;
     int thread_res = pthread_create(shuffleThread, NULL, shuffle, NULL);
 
+    //Reduce part
+    while(!finished_shuffle) {}
+    for (int i = 0; i <multiThreadLevel ; ++i)
+    {
+        pthread_t* ExecReduce = NULL;
+        int reduce_res = pthread_create(ExecReduce, NULL, ExecReduceFunc, (void*) mapReduce);
+        if (reduce_res != 0)
+        {
+            printf("error");
+        }
+    }
 }
 
 
@@ -193,3 +263,4 @@ void Emit2 (k2Base* key, v2Base* val)
 //create shuffle thread with the creation of execMap threads
 //merge all containers with the same key
 //converts list of <k2,v2> to list <k2,list(v2)>
+
