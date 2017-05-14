@@ -49,6 +49,7 @@ vector<shuffled_item> shuffledVector;
 
 OUT_ITEMS_VEC output_vector;
 
+MapReduceBase* mapReduceBase;
 
 
 int finishedMapThreads = -1;
@@ -59,7 +60,7 @@ int finishedMapThreads = -1;
  * pairs in the map func
  */
 
-void shuffle( )
+void *shuffle(void*)
 {
     // TODO - need to
     // if semaphore is
@@ -115,9 +116,10 @@ unsigned long set_chunk_size()
 
 void *ExecMapFunc(void* mapReduce)
 {
-    mapped_vector* newMapVec = new mapped_vector;
-    pthreadToContainer.insert(pair<pthread_t,
-            mapped_vector>(pthread_self(), newMapVec));
+//    mapped_vector newMapVec = new mapped_vector;
+    pthreadToContainer[pthread_self()]; // = newMapVec;
+//    pthreadToContainer.insert(pair<pthread_t,
+//            mapped_vector>(pthread_self(), newMapVec));
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
     MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     //locking mutex
@@ -169,8 +171,10 @@ void *ExecReduceFunc(void* mapReduce)
 {
     //create a container for each thread
     mapped_vector* newMapVec = new mapped_vector;
-    pthreadToContainer.insert(pair<pthread_t,
-            mapped_vector>(pthread_self(), newMapVec));
+//    pthreadToContainer.insert(pair<pthread_t,
+//            mapped_vector>(pthread_self(), newMapVec));
+//    mapped_vector* newMapVec = new mapped_vector;
+    pthreadToContainer[pthread_self()];
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
     MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
@@ -203,6 +207,7 @@ void *ExecReduceFunc(void* mapReduce)
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
                                     int multiThreadLevel, bool autoDeleteV2K2) {
+    mapReduceBase = &mapReduce;
     pthread_t *multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
     int sem_res = sem_init(shuffle_sem, 0, 0);
@@ -219,8 +224,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         // TODO creation of pthread
         pthread_t *newExecMap = NULL;
 //        mapped_vector* newMapVec = new mapped_vector;
-        int thread_res = pthread_create(newExecMap, NULL, ExecMapFunc,
-                                        (void *) mapReduce);
+        int thread_res = pthread_create(newExecMap, NULL, ExecMapFunc, NULL);
         multiThreadLevel_threads[i] = newExecMap;
         // TODO if have an error in creating a thread
     }
@@ -250,8 +254,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     prepare_to_reduce();
     for (int i = 0; i < multiThreadLevel; ++i) {
         pthread_t *ExecReduce = NULL;
-        int reduce_res = pthread_create(ExecReduce, NULL, ExecReduceFunc,
-                                        (void *) mapReduce);
+        int reduce_res = pthread_create(ExecReduce, NULL, ExecReduceFunc,NULL);
         multiThreadLevel_threads[i] = ExecReduce;
         if (reduce_res != 0) {
             printf("error");
@@ -290,6 +293,6 @@ void Emit3 (k3Base* key, v3Base* val)
 {
     // check what thread is running with self() and use the ID as a key
     // add to the shared container {<key - thread ID, val- thread map output container>}
-    mapped_item new_pair = pair<k3Base*, v3Base*>(key, val);
-    output_vector.push_back(new_pair);
+//    mapped_item new_pair = pair<k3Base*, v3Base*>(key, val);
+    output_vector.push_back(pair<k3Base*, v3Base*>(key, val));
 }
