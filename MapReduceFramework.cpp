@@ -9,13 +9,6 @@
 using namespace std;
 #define CHUNK_SIZE 10
 
-//struct sort_pred
-//{
-//    bool operator()(const std::pair<k3Base*, v3Base*> &left, const std::pair<k3Base*, v3Base*> &right)
-//    {
-//        return left.first < right.first;
-//    }
-//};
 
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
@@ -32,13 +25,14 @@ pthread_mutex_t pthreadToContainer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-sem_t* shuffle_sem;
+sem_t shuffle_sem;
 
 bool finished_shuffle = false;
 
 //lock/unlock result varaiable
 int res;
 
+/////////////////////////////// DATA STRUCTURES  //////////////////////////////
 IN_ITEMS_VEC input_vec;
 
 map<pthread_t, mapped_vector> pthreadToContainer;
@@ -55,6 +49,8 @@ MapReduceBase* mapReduceBase;
 int finishedMapThreads = -1;
 
 
+/////////////////////////////// FUNCTIONS /////////////////////////////////////
+
 /**
  * 1. Create ExecMap threads (pthreads) - each one of them will exec chunk of
  * pairs in the map func
@@ -65,7 +61,7 @@ void *shuffle(void*)
     // TODO - need to
     // if semaphore is
     int *sem_val;
-    int res = sem_getvalue(shuffle_sem, sem_val);
+    int res = sem_getvalue(&shuffle_sem, sem_val);
     if (res != 0)
     {
         // TODO reuven write an erorr
@@ -90,8 +86,8 @@ void *shuffle(void*)
                 shuffledContainer[newKey].push_back(newVal);
                 it->second.pop_back();
                 // TODO semaphore DOWN
-                int sem_res = sem_wait(shuffle_sem);
-                if(sem_res < 0)
+                int sem_res = sem_wait(&shuffle_sem);
+                if(sem_res != 0)
                 {
                     // TODO write an error
                 }
@@ -101,6 +97,12 @@ void *shuffle(void*)
     }
     finished_shuffle = true;
     next_pair_to_read = 0;
+    res = sem_destroy(&shuffle_sem);
+    if(res != 0)
+    {
+        fprintf(stderr, "system error: %s\n", "ERROR trying to destroy "
+                "semaphore");
+    }
 //    pthread_exit(0);
 }
 
@@ -210,9 +212,10 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     mapReduceBase = &mapReduce;
     pthread_t *multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
-    int sem_res = sem_init(shuffle_sem, 0, 0);
-    if (sem_res < 0) {
+    int sem_res = sem_init(&shuffle_sem, 0, 0);
+    if (sem_res != 0) {
         // TODO error initializing semaphore
+        fprintf(stderr, "system error: %s\n", "ERROR initializing semaphore");
     }
     finishedMapThreads = multiThreadLevel;
     //locking mutex
@@ -222,10 +225,10 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     //Map part
     for (int i = 0; i < multiThreadLevel; ++i) {
         // TODO creation of pthread
-        pthread_t *newExecMap = NULL;
+        pthread_t newExecMap = NULL;
 //        mapped_vector* newMapVec = new mapped_vector;
-        int thread_res = pthread_create(newExecMap, NULL, ExecMapFunc, NULL);
-        multiThreadLevel_threads[i] = newExecMap;
+        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
+        multiThreadLevel_threads[i] = &newExecMap;
         // TODO if have an error in creating a thread
     }
     // create the map size multiThreadLevel each with key - thread ID, val -
@@ -241,11 +244,15 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
 
     }
     // to map
-    pthread_t *shuffleThread = NULL;
-    int thread_res = pthread_create(shuffleThread, NULL, shuffle, NULL);
+    pthread_t shuffleThread = NULL;
+    int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
+    if(thread_res != 0)
+    {
+        // TODO reuven write an error message
+    }
     for (int k = 0; k < multiThreadLevel; ++k) {
         int res = pthread_join(*multiThreadLevel_threads[k], NULL);
-        if (res < 0) {
+        if (res != 0) {
             // TODO reuven write an error message
         }
     }
@@ -262,7 +269,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     }
     for (int k = 0; k < multiThreadLevel; ++k) {
         int res = pthread_join(*multiThreadLevel_threads[k], NULL);
-        if (res < 0) {
+        if (res != 0) {
             // TODO reuven write an error message
         }
     }
@@ -278,8 +285,8 @@ void Emit2 (k2Base* key, v2Base* val)
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer[pthread_self()].push_back(new_pair);
     // TODO semaphore +1
-    int sem_res = sem_post(shuffle_sem);
-    if(sem_res < 0)
+    int sem_res = sem_post(&shuffle_sem);
+    if(sem_res != 0)
     {
         // TODO write an error
     }
