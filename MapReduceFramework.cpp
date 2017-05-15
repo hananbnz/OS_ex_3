@@ -6,10 +6,42 @@
 #include <semaphore.h>
 #include <algorithm>
 #include <fstream>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <sys/time.h>
 
 using namespace std;
 #define CHUNK_SIZE 10
+/**
+ * TIME_MEASURE_FAIL -1
+ * @brief  the value the function gettimeofday return when an error occured.
+ */
+#define TIME_MEASURE_FAIL -1
 
+/**
+ * FUNC_FAIL -1
+ * @brief  A const value representing function failure
+ */
+#define FUNC_FAIL -1
+
+/**
+ * SEC_TO_NANO_CONST 1000000000
+ * @brief A const value to convert seconds to nanoseconds
+ */
+#define SEC_TO_NANO_CONST 1000000000
+
+/**
+ * MICRO_TO_NANO_CONST 1000
+ * @brief A const value to convert microseconds to nanoseconds
+ */
+#define MICRO_TO_NANO_CONST 1000
+
+/**
+ * FUNC_SUCCESS 0
+ * @brief  A const value representing function success
+ */
+#define FUNC_SUCCESS 0
 
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
@@ -55,9 +87,18 @@ int finishedMapThreads = -1;
 
 //////////////////// LOG FILE MESSAGES ////////////////////////////////////////
 
-string starting_MapReduceFramwork1 = "RunMapReduceFramework started with ";
-string starting_MapReduceFramwork2 = " threads\n";
-string finish_MapReduceFramwork2 = "RunMapReduceFramework finished\n";
+string start_MapReduceFramwork1 = "RunMapReduceFramework started with ";
+string start_MapReduceFramwork2 = " threads\n";
+string finish_MapReduceFramwork = "RunMapReduceFramework finished\n";
+string create_threadTypeMap = "Thread ExecMap created ";
+string create_threadTypeShuffle = "Thread Shuffle created ";
+string create_threadTypeReduce = "Thread ExecReduce created ";
+string finish_threadTypeMap = "Thread ExecMap terminated ";
+string finish_threadTypeShuffle = "Thread Shuffle terminated ";
+string finish_threadTypeReduce = "Thread ExecReduce terminated ";
+string time_for_Map_and_shuffle = "Map and Shuffle took ";
+string time_for_Reduce = "Reduce took ";
+string time_format = " ns\n";
 
 //////////////////////////// LOG FILE FUNCTIONS ///////////////////////////////
 
@@ -76,13 +117,31 @@ void create_log_file()
 
 void log_file_message(string txt)
 {
+    res  = pthread_mutex_lock(&logFile_mutex);
     outputFile << txt << endl;
+    res  = pthread_mutex_unlock(&logFile_mutex);
 }
 
 void closing_log_file()
 {
     outputFile.close();
 }
+
+
+string get_cur_time()
+{
+    auto t = time(nullptr);
+    auto tm = *std::localtime(&t);
+
+    stringstream ss;
+    ss << put_time(&tm, "[%d.%m.%Y %H:%M:%S]");
+    return ss.str();
+}
+/**
+ * @brief  timeval structs to measure start and end time of different
+ * operations in library
+ */
+struct timeval start_time, end_time;
 
 /////////////////////////// PROGRAM FUNCTIONS /////////////////////////////////
 
@@ -137,6 +196,7 @@ void *shuffle(void*)
         fprintf(stderr, "system error: %s\n", "ERROR trying to destroy "
                 "semaphore");
     }
+    log_file_message(finish_threadTypeShuffle + get_cur_time()+"\n");
 //    pthread_exit(0);
 }
 
@@ -189,6 +249,7 @@ void *ExecMapFunc(void* mapReduce)
     }
     // TODO need variable to
     finishedMapThreads --;
+    log_file_message(finish_threadTypeMap + get_cur_time()+"\n");
 //    pthread_exit(0);
 }
 
@@ -236,14 +297,25 @@ void *ExecReduceFunc(void* mapReduce)
     }
     // TODO need variable to
     finishedMapThreads --;
+    log_file_message(finish_threadTypeReduce + get_cur_time()+"\n");
 //    pthread_exit(0);
 }
 
 
-OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
-                                    int multiThreadLevel, bool autoDeleteV2K2) {
+OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
+                                    IN_ITEMS_VEC&itemsVec,
+                                    int multiThreadLevel,
+                                    bool autoDeleteV2K2) {
     create_log_file();
-    log_file_message(starting_MapReduceFramwork1 + "ssasa" + starting_MapReduceFramwork2);
+    // Map&Shuffle measure time
+    double total_time = 0;
+    if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
+    {
+        // TODO Error
+    };
+    string num = to_string(multiThreadLevel);
+    log_file_message(start_MapReduceFramwork1 + num + start_MapReduceFramwork2);
+
     mapReduceBase = &mapReduce;
     pthread_t *multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
@@ -265,6 +337,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
         multiThreadLevel_threads[i] = &newExecMap;
         // TODO if have an error in creating a thread
+        log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
     /**
      * create the map size multiThreadLevel each with key - thread ID, val -
@@ -276,25 +349,47 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
     if (pthreadToContainer.size() >= multiThreadLevel) {
         //unlocking mutex
         res = pthread_mutex_unlock(&pthreadToContainer_mutex);
-    }
-    for (int j = 0; j < multiThreadLevel; ++j) {
-
+        if(res != 0)
+        {
+            // TODO write an error
+        }
     }
     // to map
     pthread_t shuffleThread = NULL;
     int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
+    log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
     if(thread_res != 0)
     {
         // TODO reuven write an error message
     }
-    for (int k = 0; k < multiThreadLevel; ++k) {
-        int res = pthread_join(*multiThreadLevel_threads[k], NULL);
+    // join the ExecMap threads
+    for (int j = 0; j < multiThreadLevel; ++j) {
+        int res = pthread_join(*multiThreadLevel_threads[j], NULL);
         if (res != 0) {
             // TODO reuven write an error message
         }
     }
+    // join the Shuffle thread
+    int res = pthread_join(shuffleThread, NULL);
+    if (res != 0) {
+        // TODO reuven write an error message
+    }
+
+    if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
+    {
+        // TODO Error
+    }
+    total_time = ((end_time.tv_sec - start_time.tv_sec) * SEC_TO_NANO_CONST +
+                  (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
+    log_file_message(time_for_Map_and_shuffle + to_string(total_time)
+                     + time_format);
     //Reduce part
-    while (!finished_shuffle) {}
+    // Map&Shuffle measure time
+    total_time = 0;
+    if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
+    {
+        // TODO Error
+    };
     prepare_to_reduce();
     for (int i = 0; i < multiThreadLevel; ++i) {
         pthread_t *ExecReduce = NULL;
@@ -303,6 +398,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         if (reduce_res != 0) {
             printf("error");
         }
+        log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
     for (int k = 0; k < multiThreadLevel; ++k) {
         int res = pthread_join(*multiThreadLevel_threads[k], NULL);
@@ -311,6 +407,15 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         }
     }
     sort(output_vector.begin(), output_vector.end());
+    if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
+    {
+        // TODO Error
+    }
+    total_time = ((end_time.tv_sec - start_time.tv_sec) * SEC_TO_NANO_CONST +
+                  (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
+
+    log_file_message(time_for_Reduce + to_string(total_time) + time_format);
+//    printf(finish_MapReduceFramwork); // TODO print or write to log file
     return output_vector;
 
 
