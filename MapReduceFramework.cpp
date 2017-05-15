@@ -53,6 +53,11 @@ MapReduceBase* mapReduceBase;
 
 int finishedMapThreads = -1;
 
+//////////////////// LOG FILE MESSAGES ////////////////////////////////////////
+
+string starting_MapReduceFramwork1 = "RunMapReduceFramework started with ";
+string starting_MapReduceFramwork2 = " threads\n";
+string finish_MapReduceFramwork2 = "RunMapReduceFramework finished\n";
 
 //////////////////////////// LOG FILE FUNCTIONS ///////////////////////////////
 
@@ -61,8 +66,8 @@ int finishedMapThreads = -1;
 ofstream outputFile;
 void create_log_file()
 {
-
-    outputFile.open(".MapReduceFramwork.log");
+//    outputFile.open(getcwd(".MapReduceFramwork.log"));
+    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramwork.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -237,6 +242,8 @@ void *ExecReduceFunc(void* mapReduce)
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& itemsVec,
                                     int multiThreadLevel, bool autoDeleteV2K2) {
+    create_log_file();
+    log_file_message(starting_MapReduceFramwork1 + "ssasa" + starting_MapReduceFramwork2);
     mapReduceBase = &mapReduce;
     pthread_t *multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
