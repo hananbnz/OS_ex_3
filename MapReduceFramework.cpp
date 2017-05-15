@@ -85,6 +85,24 @@ MapReduceBase* mapReduceBase;
 
 int finishedMapThreads = -1;
 
+/////////////////////////Framework Error Messages////////////////////////////
+
+string pthread_create_fail = "pthread_create";
+string pthread_join_fail = "pthread_join";
+string sem_post_fail = "sem_post";
+string sem_getvalue_fail = "sem_getvalue";
+string sem_wait_fail = "sem_wait";
+string sem_destroy_fail = "sem_destroy";
+string new_fail = "new";
+string read_fail = "read";
+string open_fail = "open";
+string gettimeofday_fail = "gettimeofday";
+string sem_init_fail = "sem_init";
+string pthread_mutex_unlock_fail = "pthread_mutex_unlock";
+string pthread_mutex_lock_fail = "pthread_mutex_lock";
+
+
+
 //////////////////// LOG FILE MESSAGES ////////////////////////////////////////
 
 string start_MapReduceFramwork1 = "RunMapReduceFramework started with ";
@@ -100,6 +118,14 @@ string time_for_Map_and_shuffle = "Map and Shuffle took ";
 string time_for_Reduce = "Reduce took ";
 string time_format = " ns\n";
 
+//////////////////////////// Framework Error FUNCTIONS ////////////////////////
+
+void framework_function_fail(string text)
+{
+    fprintf(stderr, "MapReduceFramework Failure: %s failed\n", text.c_str());
+    exit(1);
+}
+
 //////////////////////////// LOG FILE FUNCTIONS ///////////////////////////////
 
 
@@ -108,7 +134,9 @@ ofstream outputFile;
 void create_log_file()
 {
 //    outputFile.open(getcwd(".MapReduceFramwork.log"));
-    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramwork.log");
+    //TODO general directory
+//    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
+    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -118,8 +146,16 @@ void create_log_file()
 void log_file_message(string txt)
 {
     res  = pthread_mutex_lock(&logFile_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     outputFile << txt << endl;
     res  = pthread_mutex_unlock(&logFile_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
 }
 
 void closing_log_file()
@@ -157,7 +193,7 @@ void *shuffle(void*)
     int res = sem_getvalue(&shuffle_sem, &sem_val);
     if (res != 0)
     {
-        // TODO reuven write an erorr
+        framework_function_fail(sem_getvalue_fail);
     }
     while(sem_val > 0 ||  finishedMapThreads != 0) // every time will check
         // again
@@ -167,22 +203,29 @@ void *shuffle(void*)
         for (auto it = pthreadToContainer.begin(); it != pthreadToContainer.end();
              ++it)
         {
+            printf("inside for\n");
+            fflush(stdout);
             // iterate over the different containers in the map pthreadToContainer
             // if the container is empty - pass
             // if not - so take the pair and put it in the shuffle map with
             // <key - the matched word, val - list of search word (length ++1)>
             // implement semaphore down.
+            //TODO problem here
+            printf("%d\n", it->second.empty());
+            fflush(stdout);
             if(!(it->second.empty()))
             {
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
+                printf("inside if\n");
+                fflush(stdout);
                 shuffledContainer[newKey].push_back(newVal);
                 it->second.pop_back();
                 // TODO semaphore DOWN
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
                 {
-                    // TODO write an error
+                    framework_function_fail(sem_wait_fail);
                 }
             }
             continue;
@@ -193,8 +236,9 @@ void *shuffle(void*)
     res = sem_destroy(&shuffle_sem);
     if(res != 0)
     {
-        fprintf(stderr, "system error: %s\n", "ERROR trying to destroy "
-                "semaphore");
+        framework_function_fail(sem_destroy_fail);
+//        fprintf(stderr, "system error: %s\n", "ERROR trying to destroy "
+//                "semaphore");
     }
     log_file_message(finish_threadTypeShuffle + get_cur_time()+"\n");
 //    pthread_exit(0);
@@ -220,8 +264,16 @@ void *ExecMapFunc(void* mapReduce)
 //    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     //unlocking mutex
     res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
     // TODO in different func - read a chunk of pairs if still need to
     // in the func will send one-by-one pairs to map
     while (true)
@@ -232,12 +284,20 @@ void *ExecMapFunc(void* mapReduce)
         }
         //locking mutex
         res  = pthread_mutex_lock(&nextValue_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_lock_fail);
+        }
         unsigned long current_chunk_size = set_chunk_size();
         int begin = next_pair_to_read;
         unsigned long end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
         //unlocking mutex
         res  = pthread_mutex_unlock(&nextValue_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_unlock_fail);
+        }
         for (int i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to map
@@ -260,14 +320,18 @@ void prepare_to_reduce()
 //    {
 //        shuffledVector.push_back(shuffled_item(it->first, it->second));
 //    }
-    printf("before for");
-    for(auto const &ent1 : shuffledContainer)
+//    for(auto const &ent1 : shuffledContainer)
+//    {
+//        printf("inside for");
+//        // ent1.first is the first key
+//        shuffledVector.push_back(shuffled_item(ent1.first, ent1.second));
+//    }
+    for( map<k2Base*, shuffled_vec>::iterator it = shuffledContainer.begin(); it != shuffledContainer.end(); ++it )
     {
         printf("inside for");
-        // ent1.first is the first key
-        shuffledVector.push_back(shuffled_item(ent1.first, ent1.second));
+        fflush(stdout);
+        shuffledVector.push_back(shuffled_item(it->first, it->second));
     }
-
 }
 
 void *ExecReduceFunc(void* mapReduce)
@@ -280,8 +344,16 @@ void *ExecReduceFunc(void* mapReduce)
     pthreadToContainer[pthread_self()];
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     //unlocking mutex
     res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
 //    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
@@ -292,14 +364,20 @@ void *ExecReduceFunc(void* mapReduce)
         }
         //locking mutex
         res  = pthread_mutex_lock(&nextValue_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_lock_fail);
+        }
         unsigned long current_chunk_size = set_chunk_size();
         int begin = next_pair_to_read;
         unsigned long end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
         //unlocking mutex
         res  = pthread_mutex_unlock(&nextValue_mutex);
-
-
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_unlock_fail);
+        }
         for (int i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to reduce
@@ -319,37 +397,47 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
                                     IN_ITEMS_VEC&itemsVec,
                                     int multiThreadLevel,
                                     bool autoDeleteV2K2) {
+    // First creates and writes to log file and starts timer
     create_log_file();
     // Map&Shuffle measure time
     double total_time = 0;
     if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
     {
-        // TODO Error
+        framework_function_fail(gettimeofday_fail);
     };
     string num = to_string(multiThreadLevel);
     log_file_message(start_MapReduceFramwork1 + num + start_MapReduceFramwork2);
 
+    //Second initialize mapReduceBase and semaphore
     mapReduceBase = &mapReduce;
     pthread_t *multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
     int sem_res = sem_init(&shuffle_sem, 0, 0);
-    if (sem_res != 0) {
-        // TODO error initializing semaphore
-        fprintf(stderr, "system error: %s\n", "ERROR initializing semaphore");
+    if (sem_res != 0)
+    {
+        framework_function_fail(sem_init_fail);
+        //TODO ask
+//        fprintf(stderr, "system error: %s\n", "ERROR initializing semaphore");
     }
     finishedMapThreads = multiThreadLevel;
+
     //locking mutex
     res = pthread_mutex_lock(&pthreadToContainer_mutex);
-    input_vec = itemsVec;
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
 
-    //Map part
+    //Third start Mapping
+    input_vec = itemsVec;
     for (int i = 0; i < multiThreadLevel; ++i) {
-        // TODO creation of pthread
         pthread_t newExecMap;
-//        mapped_vector* newMapVec = new mapped_vector;
         int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
+        if(thread_res != 0)
+        {
+            framework_function_fail(pthread_create_fail);
+        }
         multiThreadLevel_threads[i] = &newExecMap;
-        // TODO if have an error in creating a thread
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
     /**
@@ -358,82 +446,91 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
      * check about the data structure that every container is in a different
      * location. create framework internal structure
      */
-
-    if (pthreadToContainer.size() >= multiThreadLevel) {
+    if (pthreadToContainer.size() >= multiThreadLevel)
+    {
         //unlocking mutex
         res = pthread_mutex_unlock(&pthreadToContainer_mutex);
         if(res != 0)
         {
-            // TODO write an error
+            framework_function_fail(pthread_mutex_unlock_fail);
         }
     }
-    // to map
+
+    // Forth shuffle
     pthread_t shuffleThread;
     int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
     log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
     if(thread_res != 0)
     {
-        // TODO reuven write an error message
+        framework_function_fail(pthread_create_fail);
     }
-    // join the ExecMap threads
-    for (int j = 0; j < multiThreadLevel; ++j) {
+    for (int j = 0; j < multiThreadLevel; ++j) // join the ExecMap threads
+    {
         int res = pthread_join(*multiThreadLevel_threads[j], NULL);
-        if (res != 0) {
-            // TODO reuven write an error message
+        if (res != 0)
+        {
+            //TODO problem here
+            printf("join execmap\n");
+            fflush(stdout);
+            framework_function_fail(pthread_join_fail);
         }
     }
-    // join the Shuffle thread
-    int res = pthread_join(shuffleThread, NULL);
-    if (res != 0) {
-        // TODO reuven write an error message
+    int res = pthread_join(shuffleThread, NULL); // join the Shuffle thread
+    if (res != 0)
+    {
+        printf("join shuffle\n");
+        fflush(stdout);
+        framework_function_fail(pthread_join_fail);
     }
-
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
     {
-        // TODO Error
+        framework_function_fail(gettimeofday_fail);
     }
     total_time = ((end_time.tv_sec - start_time.tv_sec) * SEC_TO_NANO_CONST +
                   (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
     log_file_message(time_for_Map_and_shuffle + to_string(total_time)
                      + time_format);
-    //Reduce part
     // Map&Shuffle measure time
     total_time = 0;
     if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
     {
-        // TODO Error
+        framework_function_fail(gettimeofday_fail);
     };
-    prepare_to_reduce();
 
-    for (int i = 0; i < multiThreadLevel; ++i) {
+    //Fifth Reduce part
+    prepare_to_reduce();
+    //execReduce call
+    for (int i = 0; i < multiThreadLevel; ++i)
+    {
         pthread_t ExecReduce;
         int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
-        multiThreadLevel_threads[i] = &ExecReduce;
-        if (reduce_res != 0) {
-            printf("error");
+        if(reduce_res != 0)
+        {
+            framework_function_fail(pthread_create_fail);
         }
+        multiThreadLevel_threads[i] = &ExecReduce;
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
-    for (int k = 0; k < multiThreadLevel; ++k) {
+    for (int k = 0; k < multiThreadLevel; ++k)
+    {
         int res = pthread_join(*multiThreadLevel_threads[k], NULL);
-        if (res != 0) {
-            // TODO reuven write an error message
+        if (res != 0)
+        {
+            printf("join execReduce\n");
+            fflush(stdout);
+            framework_function_fail(pthread_join_fail);
         }
     }
     sort(output_vector.begin(), output_vector.end());
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
     {
-        // TODO Error
+        framework_function_fail(gettimeofday_fail);
     }
     total_time = ((end_time.tv_sec - start_time.tv_sec) * SEC_TO_NANO_CONST +
                   (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
-
     log_file_message(time_for_Reduce + to_string(total_time) + time_format);
     closing_log_file();
-    printf("sadas"); // TODO print or write to log file
-//    flush(outputFile);
     return output_vector;
-
 
 }
 void Emit2 (k2Base* key, v2Base* val)
@@ -446,7 +543,7 @@ void Emit2 (k2Base* key, v2Base* val)
     int sem_res = sem_post(&shuffle_sem);
     if(sem_res != 0)
     {
-        // TODO write an error
+        framework_function_fail(sem_post_fail);
     }
 }
 
