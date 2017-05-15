@@ -5,6 +5,7 @@
 #include <list>
 #include <semaphore.h>
 #include <algorithm>
+#include <fstream>
 
 using namespace std;
 #define CHUNK_SIZE 10
@@ -25,12 +26,16 @@ pthread_mutex_t pthreadToContainer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_mutex_t logFile_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 sem_t shuffle_sem;
 
 bool finished_shuffle = false;
 
 //lock/unlock result varaiable
 int res;
+int sem_val;
+
 
 /////////////////////////////// DATA STRUCTURES  //////////////////////////////
 IN_ITEMS_VEC input_vec;
@@ -49,7 +54,32 @@ MapReduceBase* mapReduceBase;
 int finishedMapThreads = -1;
 
 
-/////////////////////////////// FUNCTIONS /////////////////////////////////////
+//////////////////////////// LOG FILE FUNCTIONS ///////////////////////////////
+
+
+// A vriable to the log file
+ofstream outputFile;
+void create_log_file()
+{
+
+    outputFile.open(".MapReduceFramwork.log");
+    if(!outputFile.is_open())
+    {
+        fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
+    }
+}
+
+void log_file_message(string txt)
+{
+    outputFile << txt << endl;
+}
+
+void closing_log_file()
+{
+    outputFile.close();
+}
+
+/////////////////////////// PROGRAM FUNCTIONS /////////////////////////////////
 
 /**
  * 1. Create ExecMap threads (pthreads) - each one of them will exec chunk of
@@ -60,8 +90,7 @@ void *shuffle(void*)
 {
     // TODO - need to
     // if semaphore is
-    int *sem_val;
-    int res = sem_getvalue(&shuffle_sem, sem_val);
+    int res = sem_getvalue(&shuffle_sem, &sem_val);
     if (res != 0)
     {
         // TODO reuven write an erorr
@@ -123,7 +152,7 @@ void *ExecMapFunc(void* mapReduce)
 //    pthreadToContainer.insert(pair<pthread_t,
 //            mapped_vector>(pthread_self(), newMapVec));
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
-    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
+//    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
     //unlocking mutex
@@ -139,8 +168,6 @@ void *ExecMapFunc(void* mapReduce)
         //locking mutex
         res  = pthread_mutex_lock(&nextValue_mutex);
         unsigned long current_chunk_size = set_chunk_size();
-//        //locking mutex
-//        res  = pthread_mutex_lock(&nextValue_mutex);
         int begin = next_pair_to_read;
         unsigned long end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
@@ -149,7 +176,7 @@ void *ExecMapFunc(void* mapReduce)
         for (int i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to map
-            mapReduce1.Map(input_vec[i].first, input_vec[i].second);
+            mapReduceBase->Map(input_vec[i].first, input_vec[i].second);
 
         }
         // thread will take CHUNK (or the last reminder) and read
@@ -178,7 +205,7 @@ void *ExecReduceFunc(void* mapReduce)
 //    mapped_vector* newMapVec = new mapped_vector;
     pthreadToContainer[pthread_self()];
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
-    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
+//    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
     {
         if(next_pair_to_read >= input_vec.size())
@@ -198,7 +225,8 @@ void *ExecReduceFunc(void* mapReduce)
         for (int i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to map
-            mapReduce1.Reduce(shuffledVector[i].first, shuffledVector[i].second);
+            mapReduceBase->Reduce(shuffledVector[i].first, shuffledVector[i]
+                    .second);
         }
     }
     // TODO need variable to
@@ -231,10 +259,12 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce, IN_ITEMS_VEC& item
         multiThreadLevel_threads[i] = &newExecMap;
         // TODO if have an error in creating a thread
     }
-    // create the map size multiThreadLevel each with key - thread ID, val -
-    // the thread ID container
-    // check about the data structure that every container is in a different location.
-    // create framework internal structure
+    /**
+     * create the map size multiThreadLevel each with key - thread ID, val -
+     * the thread ID container
+     * check about the data structure that every container is in a different
+     * location. create framework internal structure
+     */
 
     if (pthreadToContainer.size() >= multiThreadLevel) {
         //unlocking mutex
