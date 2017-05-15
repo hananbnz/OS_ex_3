@@ -65,38 +65,38 @@ class MapReduceSearch: public MapReduceBase
 {
 public:
 
-    void Map(const k1Base *const key, const v1Base *const val) const
-    {
-        const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
-        const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
-        string s2 = word_val->get_word();
-        char* directory_name = ((char*)file_key->get_file_name().c_str());
-        DIR *dir = opendir(directory_name);
-        if(dir)
-        {
-            struct dirent *ent;
-            while((ent = readdir(dir)) != NULL)
-            {
-                string s1 = (string)ent->d_name;
-                if (s1.find(s2) != std::string::npos)
-                {
-                    FileNameKey* k2 = new FileNameKey(s1);
-                    WordSearch* v2 = new WordSearch(s2);
-                    Emit2(k2, v2);
-                }
-            }
-        }
-    }
+    void Map(const k1Base *const key, const v1Base *const val) const;
+//    {
+//        const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
+//        const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
+//        string s2 = word_val->get_word();
+//        char* directory_name = ((char*)file_key->get_file_name().c_str());
+//        DIR *dir = opendir(directory_name);
+//        if(dir)
+//        {
+//            struct dirent *ent;
+//            while((ent = readdir(dir)) != NULL)
+//            {
+//                string s1 = (string)ent->d_name;
+//                if (s1.find(s2) != std::string::npos)
+//                {
+//                    FileNameKey* k2 = new FileNameKey(s1);
+//                    WordSearch* v2 = new WordSearch(s2);
+//                    Emit2(k2, v2);
+//                }
+//            }
+//        }
+//    }
 
-    void Reduce(const k2Base *const key, const V2_VEC &vals) const
-    {
-        {
-            auto k3 = (FileNameKey*)key;
-            unsigned long list_size = vals.size();
-            auto v3 = new WordSearch(to_string(list_size));
-            Emit3(k3, v3);
-        }
-    }
+    void Reduce(const k2Base *const key, const V2_VEC &vals) const;
+//    {
+//        {
+//            auto k3 = (FileNameKey*)key;
+//            unsigned long list_size = vals.size();
+//            auto v3 = new WordSearch(to_string(list_size));
+//            Emit3(k3, v3);
+//        }
+//    }
 
 };
 
@@ -149,36 +149,36 @@ bool FileNameKey::operator<(const k3Base &other) const
     return false;
 }
 
-//void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val)
-//{
-//    const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
-//    const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
-//    string s2 = word_val->get_word();
-//    char* directory_name = ((char*)file_key->get_file_name().c_str());
-//    DIR *dir = opendir(directory_name);
-//    if(dir)
-//    {
-//        struct dirent *ent;
-//        while((ent = readdir(dir)) != NULL)
-//        {
-//            string s1 = (string)ent->d_name;
-//            if (s1.find(s2) != std::string::npos)
-//            {
-//                FileNameKey* k2 = new FileNameKey(s1);
-//                WordSearch* v2 = new WordSearch(s2);
-//                Emit2(k2, v2);
-//            }
-//        }
-//    }
-//}
+void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
+{
+    const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
+    const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
+    string s2 = word_val->get_word();
+    char* directory_name = ((char*)file_key->get_file_name().c_str());
+    DIR *dir = opendir(directory_name);
+    if(dir)
+    {
+        struct dirent *ent;
+        while((ent = readdir(dir)) != NULL)
+        {
+            string s1 = (string)ent->d_name;
+            if (s1.find(s2) != std::string::npos)
+            {
+                FileNameKey* k2 = new FileNameKey(s1);
+                WordSearch* v2 = new WordSearch(s2);
+                Emit2(k2, v2);
+            }
+        }
+    }
+}
 
-//void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals)
-//{
-//    auto k3 = (FileNameKey*)key;
-//    unsigned long list_size = vals.size();
-//    auto v3 = new WordSearch(to_string(list_size));
-//    Emit3(k3, v3);
-//}
+void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
+{
+    auto k3 = (FileNameKey*)key;
+    unsigned long list_size = vals.size();
+    auto v3 = new WordSearch(to_string(list_size));
+    Emit3(k3, v3);
+}
 
 /////////////////////////////// The Search program /////////////////////////////
 

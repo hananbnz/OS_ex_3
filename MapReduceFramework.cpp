@@ -255,11 +255,19 @@ void *ExecMapFunc(void* mapReduce)
 
 void prepare_to_reduce()
 {
-    for (auto it = shuffledContainer.begin(); it != shuffledContainer.end();
-         ++it)
+//    for (auto it = shuffledContainer.begin(); it != shuffledContainer.end();
+//         ++it)
+//    {
+//        shuffledVector.push_back(shuffled_item(it->first, it->second));
+//    }
+    printf("before for");
+    for(auto const &ent1 : shuffledContainer)
     {
-        shuffledVector.push_back(shuffled_item(it->first, it->second));
+        printf("inside for");
+        // ent1.first is the first key
+        shuffledVector.push_back(shuffled_item(ent1.first, ent1.second));
     }
+
 }
 
 void *ExecReduceFunc(void* mapReduce)
@@ -270,6 +278,10 @@ void *ExecReduceFunc(void* mapReduce)
 //            mapped_vector>(pthread_self(), newMapVec));
 //    mapped_vector* newMapVec = new mapped_vector;
     pthreadToContainer[pthread_self()];
+    //locking mutex
+    res  = pthread_mutex_lock(&pthreadToContainer_mutex);
+    //unlocking mutex
+    res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
 //    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
@@ -290,7 +302,8 @@ void *ExecReduceFunc(void* mapReduce)
 
         for (int i = begin; i < end; ++i)
         {
-            // Reading the pairs in the input vector one-by-one to map
+            // Reading the pairs in the input vector one-by-one to reduce
+            log_file_message("sddsdds\n");
             mapReduceBase->Reduce(shuffledVector[i].first, shuffledVector[i]
                     .second);
         }
@@ -332,7 +345,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     //Map part
     for (int i = 0; i < multiThreadLevel; ++i) {
         // TODO creation of pthread
-        pthread_t newExecMap = NULL;
+        pthread_t newExecMap;
 //        mapped_vector* newMapVec = new mapped_vector;
         int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
         multiThreadLevel_threads[i] = &newExecMap;
@@ -355,7 +368,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         }
     }
     // to map
-    pthread_t shuffleThread = NULL;
+    pthread_t shuffleThread;
     int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
     log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
     if(thread_res != 0)
@@ -391,10 +404,11 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         // TODO Error
     };
     prepare_to_reduce();
+
     for (int i = 0; i < multiThreadLevel; ++i) {
-        pthread_t *ExecReduce = NULL;
-        int reduce_res = pthread_create(ExecReduce, NULL, ExecReduceFunc,NULL);
-        multiThreadLevel_threads[i] = ExecReduce;
+        pthread_t ExecReduce;
+        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
+        multiThreadLevel_threads[i] = &ExecReduce;
         if (reduce_res != 0) {
             printf("error");
         }
@@ -415,7 +429,9 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
                   (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
 
     log_file_message(time_for_Reduce + to_string(total_time) + time_format);
-//    printf(finish_MapReduceFramwork); // TODO print or write to log file
+    closing_log_file();
+    printf("sadas"); // TODO print or write to log file
+//    flush(outputFile);
     return output_vector;
 
 
