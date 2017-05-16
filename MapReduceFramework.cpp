@@ -133,10 +133,11 @@ void framework_function_fail(string text)
 ofstream outputFile;
 void create_log_file()
 {
+
 //    outputFile.open(getcwd(".MapReduceFramwork.log"));
     //TODO general directory
-//    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
-    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
+    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
+//    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -410,7 +411,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     //Second initialize mapReduceBase and semaphore
     mapReduceBase = &mapReduce;
-    pthread_t *multiThreadLevel_threads[multiThreadLevel];
+    pthread_t multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
     int sem_res = sem_init(&shuffle_sem, 0, 0);
     if (sem_res != 0)
@@ -437,7 +438,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         {
             framework_function_fail(pthread_create_fail);
         }
-        multiThreadLevel_threads[i] = &newExecMap;
+        multiThreadLevel_threads[i] = newExecMap;
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
     /**
@@ -466,7 +467,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     }
     for (int j = 0; j < multiThreadLevel; ++j) // join the ExecMap threads
     {
-        int res = pthread_join(*multiThreadLevel_threads[j], NULL);
+        int res = pthread_join(multiThreadLevel_threads[j], NULL);
         if (res != 0)
         {
             //TODO problem here
@@ -508,12 +509,12 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         {
             framework_function_fail(pthread_create_fail);
         }
-        multiThreadLevel_threads[i] = &ExecReduce;
+        multiThreadLevel_threads[i] = ExecReduce;
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
     for (int k = 0; k < multiThreadLevel; ++k)
     {
-        int res = pthread_join(*multiThreadLevel_threads[k], NULL);
+        int res = pthread_join(multiThreadLevel_threads[k], NULL);
         if (res != 0)
         {
             printf("join execReduce\n");

@@ -1,12 +1,14 @@
 #include <cstdio>
 #include <iostream>
 #include <stdlib.h>
+#include <unistd.h>
 //#include "string"
 #include <stdbool.h>
 #include <cstring>
 #include <dirent.h>
 #include "MapReduceClient.h"
 #include "MapReduceFramework.h"
+
 
 using namespace std;
 
@@ -154,7 +156,7 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
     const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
     const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
     string s2 = word_val->get_word();
-    char* directory_name = ((char*)file_key->get_file_name().c_str());
+    const char* directory_name = file_key->get_file_name().c_str();
     DIR *dir = opendir(directory_name);
     if(dir)
     {
@@ -240,9 +242,13 @@ int main(int argc, char * argv[])
             printf("%s ", name->get_file_name());
         }
     }
-    //TODO release memory
-
-//    DIR *dir = opendir("/cs/usr/reuveny/safe/OS/ex_3/os2015/exercise");
+//    //TODO release memory
+//    char buf[255];
+//    size_t buf_size = 1024;
+//    char* r_buf;
+//    r_buf = getcwd(buf, buf_size);
+//    std::cout << r_buf <<" !!!!" << '\n';
+//    DIR *dir = opendir("/cs/usr/hananbnz/safe/OS/ex_3/os2015/exercise");
 //    if(dir)
 //    {
 //        struct dirent *ent;
