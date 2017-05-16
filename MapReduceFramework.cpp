@@ -69,13 +69,18 @@ int res;
 int sem_val;
 
 
-/////////////////////////////// DATA STRUCTURES  //////////////////////////////
+/////////////////////// SHARED DATA STRUCTURES  //////////////////////////////
 IN_ITEMS_VEC input_vec;
 
 map<pthread_t, mapped_vector> pthreadToContainer;
 
-map<k2Base*, shuffled_vec> shuffledContainer;
 
+/* comperator for the shuffled map insertion */
+//bool myComp(k2Base* x, k2Base* y){return ((*x) < (*y));}
+/* The output of the shuffle  */
+//static map<k2Base*, shuffled_vec, bool (*) (k2Base*, k2Base*)>
+//        shuffledContainer(myComp);
+map<k2Base*, shuffled_vec> shuffledContainer;
 vector<shuffled_item> shuffledVector;
 
 OUT_ITEMS_VEC output_vector;
@@ -83,7 +88,7 @@ OUT_ITEMS_VEC output_vector;
 MapReduceBase* mapReduceBase;
 
 
-int finishedMapThreads = -1;
+bool finishedMapThreads = false;
 
 /////////////////////////Framework Error Messages////////////////////////////
 
@@ -196,53 +201,40 @@ void *shuffle(void*)
     {
         framework_function_fail(sem_getvalue_fail);
     }
-    while(sem_val > 0 ||  finishedMapThreads != 0) // every time will check
-        // again
-        // for
+    while(sem_val > 0 ||  !finishedMapThreads) // every time will check
     {
-            // place semaphore ??!
         for (auto it = pthreadToContainer.begin(); it != pthreadToContainer.end();
              ++it)
         {
-            printf("inside for\n");
-            fflush(stdout);
-            // iterate over the different containers in the map pthreadToContainer
-            // if the container is empty - pass
-            // if not - so take the pair and put it in the shuffle map with
-            // <key - the matched word, val - list of search word (length ++1)>
-            // implement semaphore down.
-            //TODO problem here
-            printf("%d\n", it->second.empty());
-            fflush(stdout);
-            if(!(it->second.empty()))
+            while(!(it->second.empty()))
             {
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
-                printf("inside if\n");
-                fflush(stdout);
                 shuffledContainer[newKey].push_back(newVal);
                 it->second.pop_back();
-                // TODO semaphore DOWN
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
                 {
                     framework_function_fail(sem_wait_fail);
                 }
             }
-            continue;
+        }
+        res = sem_getvalue(&shuffle_sem, &sem_val);
+        if (res != 0)
+        {
+            framework_function_fail(sem_getvalue_fail);
         }
     }
     finished_shuffle = true;
     next_pair_to_read = 0;
     res = sem_destroy(&shuffle_sem);
+    printf("size of continer %d\n", shuffledContainer.size());
     if(res != 0)
     {
         framework_function_fail(sem_destroy_fail);
-//        fprintf(stderr, "system error: %s\n", "ERROR trying to destroy "
-//                "semaphore");
     }
     log_file_message(finish_threadTypeShuffle + get_cur_time()+"\n");
-//    pthread_exit(0);
+    pthread_exit(NULL);
 }
 
 unsigned long set_chunk_size()
@@ -258,7 +250,7 @@ unsigned long set_chunk_size()
 void *ExecMapFunc(void* mapReduce)
 {
 //    mapped_vector newMapVec = new mapped_vector;
-    pthreadToContainer[pthread_self()]; // = newMapVec;
+//    pthreadToContainer[pthread_self()]; // = newMapVec;
 //    pthreadToContainer.insert(pair<pthread_t,
 //            mapped_vector>(pthread_self(), newMapVec));
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
@@ -309,27 +301,15 @@ void *ExecMapFunc(void* mapReduce)
         // TODO lock mutex if here or before the loop
     }
     // TODO need variable to
-    finishedMapThreads --;
     log_file_message(finish_threadTypeMap + get_cur_time()+"\n");
-//    pthread_exit(0);
+    pthread_exit(NULL);
 }
 
 void prepare_to_reduce()
 {
-//    for (auto it = shuffledContainer.begin(); it != shuffledContainer.end();
-//         ++it)
-//    {
-//        shuffledVector.push_back(shuffled_item(it->first, it->second));
-//    }
-//    for(auto const &ent1 : shuffledContainer)
-//    {
-//        printf("inside for");
-//        // ent1.first is the first key
-//        shuffledVector.push_back(shuffled_item(ent1.first, ent1.second));
-//    }
     for( map<k2Base*, shuffled_vec>::iterator it = shuffledContainer.begin(); it != shuffledContainer.end(); ++it )
     {
-        printf("inside for");
+        printf("size %d\n", it->second.size());
         fflush(stdout);
         shuffledVector.push_back(shuffled_item(it->first, it->second));
     }
@@ -342,7 +322,7 @@ void *ExecReduceFunc(void* mapReduce)
 //    pthreadToContainer.insert(pair<pthread_t,
 //            mapped_vector>(pthread_self(), newMapVec));
 //    mapped_vector* newMapVec = new mapped_vector;
-    pthreadToContainer[pthread_self()];
+//    pthreadToContainer[pthread_self()];
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
     if(res != 0)
@@ -382,15 +362,13 @@ void *ExecReduceFunc(void* mapReduce)
         for (int i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to reduce
-            log_file_message("sddsdds\n");
             mapReduceBase->Reduce(shuffledVector[i].first, shuffledVector[i]
                     .second);
         }
     }
     // TODO need variable to
-    finishedMapThreads --;
     log_file_message(finish_threadTypeReduce + get_cur_time()+"\n");
-//    pthread_exit(0);
+    pthread_exit(NULL);
 }
 
 
@@ -417,11 +395,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     if (sem_res != 0)
     {
         framework_function_fail(sem_init_fail);
-        //TODO ask
-//        fprintf(stderr, "system error: %s\n", "ERROR initializing semaphore");
     }
-    finishedMapThreads = multiThreadLevel;
-
     //locking mutex
     res = pthread_mutex_lock(&pthreadToContainer_mutex);
     if(res != 0)
@@ -439,6 +413,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_create_fail);
         }
         multiThreadLevel_threads[i] = newExecMap;
+        pthreadToContainer[newExecMap];
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
     /**
@@ -456,7 +431,6 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_mutex_unlock_fail);
         }
     }
-
     // Forth shuffle
     pthread_t shuffleThread;
     int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
@@ -470,17 +444,13 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         int res = pthread_join(multiThreadLevel_threads[j], NULL);
         if (res != 0)
         {
-            //TODO problem here
-            printf("join execmap\n");
-            fflush(stdout);
             framework_function_fail(pthread_join_fail);
         }
     }
+    finishedMapThreads = true;
     int res = pthread_join(shuffleThread, NULL); // join the Shuffle thread
     if (res != 0)
     {
-        printf("join shuffle\n");
-        fflush(stdout);
         framework_function_fail(pthread_join_fail);
     }
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
@@ -510,6 +480,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_create_fail);
         }
         multiThreadLevel_threads[i] = ExecReduce;
+        pthreadToContainer[ExecReduce];
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
     for (int k = 0; k < multiThreadLevel; ++k)
@@ -517,8 +488,6 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         int res = pthread_join(multiThreadLevel_threads[k], NULL);
         if (res != 0)
         {
-            printf("join execReduce\n");
-            fflush(stdout);
             framework_function_fail(pthread_join_fail);
         }
     }
@@ -534,13 +503,16 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     return output_vector;
 
 }
+
+
 void Emit2 (k2Base* key, v2Base* val)
 {
     // check what thread is running with self() and use the ID as a key
     // add to the shared container {<key - thread ID, val- thread map output container>}
+    printf("called Emit2\n");
+    fflush(stdout);
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer[pthread_self()].push_back(new_pair);
-    // TODO semaphore +1
     int sem_res = sem_post(&shuffle_sem);
     if(sem_res != 0)
     {

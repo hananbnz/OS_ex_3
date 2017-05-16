@@ -32,7 +32,8 @@ public:
     bool operator<(const k1Base &other) const;
 
     bool operator<(const k2Base &other) const;
-
+    bool operator==(const k1Base &other) const;
+    bool operator>(const k2Base &other) const;
     bool operator<(const k3Base &other) const;
 
 private:
@@ -129,6 +130,7 @@ bool FileNameKey::operator<(const k2Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
+//    int res = this->get_file_name().compare(other_file.get_file_name());
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
 
     if(res < 0)
@@ -137,6 +139,22 @@ bool FileNameKey::operator<(const k2Base &other) const
     }
     return false;
 }
+
+/**
+bool FileNameKey::operator>(const k2Base &other) const
+{
+    return other < *this;
+}
+
+bool FileNameKey::operator==(const k1Base &other) const
+{
+    if(!(other < *this) && !(*this < other))
+    {
+        return true;
+    }
+    return false;
+}
+*/
 
 bool FileNameKey::operator<(const k3Base &other) const
 {
@@ -178,6 +196,8 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
     auto k3 = (FileNameKey*)key;
     unsigned long list_size = vals.size();
+    printf("key: %s, num: %d\n", k3->get_file_name().c_str(), list_size);
+    fflush(stdout);
     auto v3 = new WordSearch(to_string(list_size));
     Emit3(k3, v3);
 }
@@ -237,9 +257,11 @@ int main(int argc, char * argv[])
         const FileNameKey* name = dynamic_cast<const FileNameKey*>(output_vector[i].first);
         const WordSearch*  num = dynamic_cast<const WordSearch*>(output_vector[i].second);
         int number_of_appearance = stoi(num->get_word());
+        printf("num of app %d \n", number_of_appearance);
         for (int j = 0; j < number_of_appearance ; ++j)
         {
-            printf("%s ", name->get_file_name());
+            printf("%s\n", name->get_file_name().c_str());
+            fflush(stdout);
         }
     }
 //    //TODO release memory
