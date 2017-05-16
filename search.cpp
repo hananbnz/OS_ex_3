@@ -129,6 +129,8 @@ bool FileNameKey::operator<(const k1Base &other) const
 bool FileNameKey::operator<(const k2Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
+    printf("self: %s   other: %s\n", this->get_file_name().c_str(), other_file.get_file_name().c_str());
+    fflush(stdout);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
 //    int res = this->get_file_name().compare(other_file.get_file_name());
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
@@ -186,6 +188,8 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
             {
                 FileNameKey* k2 = new FileNameKey(s1);
                 WordSearch* v2 = new WordSearch(s2);
+                printf("In Emit2 key: %s, value: %s\n", k2->get_file_name().c_str(), v2->get_word().c_str());
+                fflush(stdout);
                 Emit2(k2, v2);
             }
         }

@@ -11,6 +11,7 @@
 #include <sstream>
 #include <sys/time.h>
 
+
 using namespace std;
 #define CHUNK_SIZE 10
 /**
@@ -68,6 +69,7 @@ bool finished_shuffle = false;
 int res;
 int sem_val;
 
+vector<pthread_t> multiThreadLevel_threads(4,NULL);
 
 /////////////////////// SHARED DATA STRUCTURES  //////////////////////////////
 IN_ITEMS_VEC input_vec;
@@ -80,7 +82,9 @@ map<pthread_t, mapped_vector> pthreadToContainer;
 /* The output of the shuffle  */
 //static map<k2Base*, shuffled_vec, bool (*) (k2Base*, k2Base*)>
 //        shuffledContainer(myComp);
-map<k2Base*, shuffled_vec> shuffledContainer;
+
+//map<k2Base*, shuffled_vec> shuffledContainer;
+
 vector<shuffled_item> shuffledVector;
 
 OUT_ITEMS_VEC output_vector;
@@ -141,8 +145,8 @@ void create_log_file()
 
 //    outputFile.open(getcwd(".MapReduceFramwork.log"));
     //TODO general directory
-    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
-//    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
+//    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
+    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -203,14 +207,32 @@ void *shuffle(void*)
     }
     while(sem_val > 0 ||  !finishedMapThreads) // every time will check
     {
-        for (auto it = pthreadToContainer.begin(); it != pthreadToContainer.end();
-             ++it)
+        for (auto it = pthreadToContainer.begin(); it != pthreadToContainer.end(); ++it)
         {
+            //TODO iterate different on pthreadContainer
             while(!(it->second.empty()))
             {
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
-                shuffledContainer[newKey].push_back(newVal);
+                bool is_key_exist = false;
+                for (int i = 0; i < shuffledVector.size(); ++i)
+                {
+                    if(!(*newKey < *(shuffledVector[i].first)) && !(*(shuffledVector[i].first) < *newKey))
+                    {
+                        shuffledVector[i].second.push_back(newVal);
+                        is_key_exist = true;
+                        break;
+                    }
+
+                }
+                if(!is_key_exist)
+                {
+//                    shuffled_vec new_vec(1, newVal);
+                    shuffled_vec new_vec;
+                    new_vec.push_back(newVal);
+                    shuffled_item new_item = pair<k2Base*, shuffled_vec>(newKey, new_vec);
+                    shuffledVector.push_back(new_item);
+                }
                 it->second.pop_back();
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
@@ -228,7 +250,7 @@ void *shuffle(void*)
     finished_shuffle = true;
     next_pair_to_read = 0;
     res = sem_destroy(&shuffle_sem);
-    printf("size of continer %d\n", shuffledContainer.size());
+    printf("size of continer %d\n", shuffledVector.size());
     if(res != 0)
     {
         framework_function_fail(sem_destroy_fail);
@@ -305,15 +327,15 @@ void *ExecMapFunc(void* mapReduce)
     pthread_exit(NULL);
 }
 
-void prepare_to_reduce()
-{
-    for( map<k2Base*, shuffled_vec>::iterator it = shuffledContainer.begin(); it != shuffledContainer.end(); ++it )
-    {
-        printf("size %d\n", it->second.size());
-        fflush(stdout);
-        shuffledVector.push_back(shuffled_item(it->first, it->second));
-    }
-}
+//void prepare_to_reduce()
+//{
+//    for( map<k2Base*, shuffled_vec>::iterator it = shuffledContainer.begin(); it != shuffledContainer.end(); ++it )
+//    {
+//        printf("size %d\n", it->second.size());
+//        fflush(stdout);
+//        shuffledVector.push_back(shuffled_item(it->first, it->second));
+//    }
+//}
 
 void *ExecReduceFunc(void* mapReduce)
 {
@@ -389,7 +411,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     //Second initialize mapReduceBase and semaphore
     mapReduceBase = &mapReduce;
-    pthread_t multiThreadLevel_threads[multiThreadLevel];
+//    pthread_t multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
     int sem_res = sem_init(&shuffle_sem, 0, 0);
     if (sem_res != 0)
@@ -469,7 +491,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     };
 
     //Fifth Reduce part
-    prepare_to_reduce();
+//    prepare_to_reduce();
     //execReduce call
     for (int i = 0; i < multiThreadLevel; ++i)
     {
