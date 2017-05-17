@@ -71,7 +71,8 @@ bool finished_shuffle = false;
 int res;
 int sem_val;
 
-vector<pthread_t> multiThreadLevel_threads(4,NULL);
+vector<pthread_t> multiThreadLevel_threads_Map;
+vector<pthread_t> multiThreadLevel_threads_Reduce;
 
 /////////////////////// SHARED DATA STRUCTURES  //////////////////////////////
 
@@ -156,8 +157,8 @@ void create_log_file()
 
 //    outputFile.open(getcwd(".MapReduceFramwork.log"));
     //TODO general directory
-//    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
-    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
+    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
+//    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -425,7 +426,6 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     //Second initialize mapReduceBase and semaphore
     mapReduceBase = &mapReduce;
-//    pthread_t multiThreadLevel_threads[multiThreadLevel];
     // initialize semaphore for shuffle
     int sem_res = sem_init(&shuffle_sem, 0, 0);
     if (sem_res != 0)
@@ -448,7 +448,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         {
             framework_function_fail(pthread_create_fail);
         }
-        multiThreadLevel_threads[i] = newExecMap;
+        multiThreadLevel_threads_Map.push_back(newExecMap);
         pthreadToContainer_Map[newExecMap];
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
@@ -477,7 +477,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     }
     for (int j = 0; j < multiThreadLevel; ++j) // join the ExecMap threads
     {
-        int res = pthread_join(multiThreadLevel_threads[j], NULL);
+        int res = pthread_join(multiThreadLevel_threads_Map[j], NULL);
         if (res != 0)
         {
             framework_function_fail(pthread_join_fail);
@@ -520,7 +520,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         {
             framework_function_fail(pthread_create_fail);
         }
-        multiThreadLevel_threads[i] = ExecReduce;
+        multiThreadLevel_threads_Reduce.push_back(ExecReduce);
         pthreadToContainer_Reduce[ExecReduce];
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
@@ -537,7 +537,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     for (int k = 0; k < multiThreadLevel; ++k)
     {
-        int res = pthread_join(multiThreadLevel_threads[k], NULL);
+        int res = pthread_join(multiThreadLevel_threads_Reduce[k], NULL);
         if (res != 0)
         {
             framework_function_fail(pthread_join_fail);
