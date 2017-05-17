@@ -55,7 +55,9 @@ int next_pair_to_read = 0;
 
 
 ///////////////////////   lockers /////////////////////////////////////////
-pthread_mutex_t pthreadToContainer_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pthreadToContainer_Map_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t pthreadToContainer_Reduce_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -78,7 +80,9 @@ vector<pthread_t> multiThreadLevel_threads(4,NULL);
 //vector<pair<k1Base*, v1Base*>> IN_ITEMS_VEC;
 IN_ITEMS_VEC input_vec;
 //
-map<pthread_t, mapped_vector> pthreadToContainer;
+map<pthread_t, mapped_vector> pthreadToContainer_Map;
+
+map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
 
 //vector <pair<k2Base*, vector<v2Base*>>> shuffled_item;
 vector<shuffled_item> shuffledVector;
@@ -100,8 +104,6 @@ MapReduceBase* mapReduceBase;
 
 
 bool finishedMapThreads = false;
-
-bool autoReleaseResources = false;
 
 /////////////////////////Framework Error Messages////////////////////////////
 
@@ -154,8 +156,8 @@ void create_log_file()
 
 //    outputFile.open(getcwd(".MapReduceFramwork.log"));
     //TODO general directory
-//    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
-    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
+    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
+//    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
@@ -216,7 +218,8 @@ void *shuffle(void*)
     }
     while(sem_val > 0 ||  !finishedMapThreads) // every time will check
     {
-        for (auto it = pthreadToContainer.begin(); it != pthreadToContainer.end(); ++it)
+        for (auto it = pthreadToContainer_Map.begin(); it !=
+                pthreadToContainer_Map.end(); ++it)
         {
             //TODO iterate different on pthreadContainer
             while(!(it->second.empty()))
@@ -244,8 +247,6 @@ void *shuffle(void*)
                     shuffled_item new_item = pair<k2Base*, shuffled_vec>(newKey, new_vec);
                     shuffledVector.push_back(new_item);
                 }
-//                mapped_vector vector = it->second;
-//                vector.pop_back();
 
                 for (int j = 0; j < it->second.size(); ++j)
                 {
@@ -272,7 +273,6 @@ void *shuffle(void*)
     finished_shuffle = true;
     next_pair_to_read = 0;
     res = sem_destroy(&shuffle_sem);
-//    printf("size of continer %d\n", shuffledVector.size());
     if(res != 0)
     {
         framework_function_fail(sem_destroy_fail);
@@ -291,6 +291,7 @@ unsigned long set_chunk_size(unsigned long vec_size)
     return current_chunk_size;
 }
 
+
 void *ExecMapFunc(void* mapReduce)
 {
 //    mapped_vector newMapVec = new mapped_vector;
@@ -300,13 +301,13 @@ void *ExecMapFunc(void* mapReduce)
     // TODO the execmap func lock and unlock mutex and than map in mapReduce
 //    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     //locking mutex
-    res  = pthread_mutex_lock(&pthreadToContainer_mutex);
+    res  = pthread_mutex_lock(&pthreadToContainer_Map_mutex);
     if(res != 0)
     {
         framework_function_fail(pthread_mutex_lock_fail);
     }
     //unlocking mutex
-    res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
+    res  = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
     if(res != 0)
     {
         framework_function_fail(pthread_mutex_unlock_fail);
@@ -361,25 +362,20 @@ void *ExecMapFunc(void* mapReduce)
 
 void *ExecReduceFunc(void* mapReduce)
 {
-
     //locking mutex
-    res  = pthread_mutex_lock(&pthreadToContainer_mutex);
+    res  = pthread_mutex_lock(&pthreadToContainer_Reduce_mutex);
     if(res != 0)
     {
         framework_function_fail(pthread_mutex_lock_fail);
     }
     //unlocking mutex
-    res  = pthread_mutex_unlock(&pthreadToContainer_mutex);
+    res  = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
     if(res != 0)
     {
         framework_function_fail(pthread_mutex_unlock_fail);
     }
-    // TODO the execmap func lock and unlock mutex and than map in mapReduce
-//    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
     {
-//        printf("next_pair_to_read : %d, shuffledVector.size() : %d \n",next_pair_to_read, shuffledVector.size());
-//        fflush(stdout);
         if(next_pair_to_read >= shuffledVector.size())
         {
             break;
@@ -407,18 +403,15 @@ void *ExecReduceFunc(void* mapReduce)
                     .second);
         }
     }
-    // TODO need variable to
     log_file_message(finish_threadTypeReduce + get_cur_time()+"\n");
     pthread_exit(NULL);
 }
 
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
-                                    IN_ITEMS_VEC& itemsVec,
+                                    IN_ITEMS_VEC&itemsVec,
                                     int multiThreadLevel,
-                                    bool autoDeleteV2K2)
-{
-    autoReleaseResources = autoDeleteV2K2;
+                                    bool autoDeleteV2K2) {
     // First creates and writes to log file and starts timer
     create_log_file();
     // Map&Shuffle measure time
@@ -440,7 +433,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         framework_function_fail(sem_init_fail);
     }
     //locking mutex
-    res = pthread_mutex_lock(&pthreadToContainer_mutex);
+    res = pthread_mutex_lock(&pthreadToContainer_Map_mutex);
     if(res != 0)
     {
         framework_function_fail(pthread_mutex_lock_fail);
@@ -456,7 +449,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_create_fail);
         }
         multiThreadLevel_threads[i] = newExecMap;
-        pthreadToContainer[newExecMap];
+        pthreadToContainer_Map[newExecMap];
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
     /**
@@ -465,10 +458,10 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
      * check about the data structure that every container is in a different
      * location. create framework internal structure
      */
-    if (pthreadToContainer.size() >= multiThreadLevel)
+    if (pthreadToContainer_Map.size() >= multiThreadLevel)
     {
         //unlocking mutex
-        res = pthread_mutex_unlock(&pthreadToContainer_mutex);
+        res = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
         if(res != 0)
         {
             framework_function_fail(pthread_mutex_unlock_fail);
@@ -511,11 +504,14 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         framework_function_fail(gettimeofday_fail);
     };
 
-//    printf("vector container size %d\n", shuffledVector.size());
-
     //Fifth Reduce part
-//    prepare_to_reduce();
     //execReduce call
+    //locking mutex
+    res = pthread_mutex_lock(&pthreadToContainer_Reduce_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     for (int i = 0; i < multiThreadLevel; ++i)
     {
         pthread_t ExecReduce;
@@ -525,9 +521,20 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_create_fail);
         }
         multiThreadLevel_threads[i] = ExecReduce;
-        pthreadToContainer[ExecReduce];
+        pthreadToContainer_Reduce[ExecReduce];
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
+
+    if (pthreadToContainer_Reduce.size() >= multiThreadLevel)
+    {
+        //unlocking mutex
+        res = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_unlock_fail);
+        }
+    }
+
     for (int k = 0; k < multiThreadLevel; ++k)
     {
         int res = pthread_join(multiThreadLevel_threads[k], NULL);
@@ -544,19 +551,12 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     total_time = ((end_time.tv_sec - start_time.tv_sec) * SEC_TO_NANO_CONST +
                   (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
     log_file_message(time_for_Reduce + to_string(total_time) + time_format);
+    log_file_message(finish_MapReduceFramwork);
     closing_log_file();
-
-
-//    input_vec.clear();
-//
-//    pthreadToContainer.clear();
-//
-//    shuffledVector.clear();
 
     return output_vector;
 
 }
-
 
 
 void Emit2 (k2Base* key, v2Base* val)
@@ -566,7 +566,7 @@ void Emit2 (k2Base* key, v2Base* val)
 //    printf("called Emit2\n");
 //    fflush(stdout);
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
-    pthreadToContainer[pthread_self()].push_back(new_pair);
+    pthreadToContainer_Map[pthread_self()].push_back(new_pair);
 //    printf("%d\n",pthread_self());
 //    fflush(stdout);
     int sem_res = sem_post(&shuffle_sem);
