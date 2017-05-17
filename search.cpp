@@ -136,8 +136,8 @@ bool FileNameKey::operator<(const k2Base &other) const
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
 //    int res = this->get_file_name().compare(other_file.get_file_name());
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
-    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
-    fflush(stdout);
+//    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
+//    fflush(stdout);
     if(res < 0)
     {
         return true;
@@ -191,8 +191,8 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
             {
                 FileNameKey* k2 = new FileNameKey(s1);
                 WordSearch* v2 = new WordSearch(s2);
-                printf("In Emit2 key: %s, value: %s\n", k2->get_file_name().c_str(), v2->get_word().c_str());
-                fflush(stdout);
+//                printf("In Emit2 key: %s, value: %s\n", k2->get_file_name().c_str(), v2->get_word().c_str());
+//                fflush(stdout);
                 Emit2(k2, v2);
             }
         }
@@ -203,8 +203,8 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
     auto k3 = (FileNameKey*)key;
     unsigned long list_size = vals.size();
-    printf("key: %s, num: %d\n", k3->get_file_name().c_str(), list_size);
-    fflush(stdout);
+//    printf("key: %s, num: %d\n", k3->get_file_name().c_str(), list_size);
+//    fflush(stdout);
     auto v3 = new WordSearch(to_string(list_size));
     Emit3(k3, v3);
 }
@@ -247,54 +247,32 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 
 int main(int argc, char * argv[])
 {
-    if (argc < VALID_ARG_NUM)
-    {
-        fprintf(stderr, "%s\n", thread_init_fail.c_str());
-        exit(1);
-
-    }
-    IN_ITEMS_VEC mapInput = prepareToMap(argv, argc);
-    MapReduceSearch m;
-    OUT_ITEMS_VEC output_vector;
-    output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check
-    // values
-
-    for (int i = 0; i < output_vector.size() ; ++i)
-    {
-        const FileNameKey* name = dynamic_cast<const FileNameKey*>(output_vector[i].first);
-        const WordSearch*  num = dynamic_cast<const WordSearch*>(output_vector[i].second);
-        int number_of_appearance = stoi(num->get_word());
-        printf("num of app %d \n", number_of_appearance);
-        for (int j = 0; j < number_of_appearance ; ++j)
+        if (argc < VALID_ARG_NUM)
         {
-            printf("%s\n", name->get_file_name().c_str());
-            fflush(stdout);
-        }
-    }
-//    //TODO release memory
-//    char buf[255];
-//    size_t buf_size = 1024;
-//    char* r_buf;
-//    r_buf = getcwd(buf, buf_size);
-//    std::cout << r_buf <<" !!!!" << '\n';
-//    DIR *dir = opendir("/cs/usr/hananbnz/safe/OS/ex_3/os2015/exercise");
-//    if(dir)
-//    {
-//        struct dirent *ent;
-//        while((ent = readdir(dir)) != NULL)
-//        {
-//            string s1 = (string)ent->d_name;
-//            if (s1.find("os") != std::string::npos)
-//            {
-//                std::cout << s1 <<" found!" << '\n';
-//            }
-//        }
-//    }
-//    printf("search running....\n");
-//    printf("search for 'os' in os2015/exercise blabla myFolder\n");
-//    printf("found 'osTargil' 'sos' 'sos'\n");
-//    printf("search finished...\n");
+            fprintf(stderr, "%s\n", thread_init_fail.c_str());
+            exit(1);
 
+        }
+        IN_ITEMS_VEC mapInput = prepareToMap(argv, argc);
+        MapReduceSearch m;
+        OUT_ITEMS_VEC output_vector;
+        output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check
+        // values
+
+        for (int i = 0; i < output_vector.size() ; ++i)
+        {
+            const FileNameKey* name = dynamic_cast<const FileNameKey*>(output_vector[i].first);
+            const WordSearch*  num = dynamic_cast<const WordSearch*>(output_vector[i].second);
+            int number_of_appearance = stoi(num->get_word());
+    //        printf("num of app %d \n", number_of_appearance);
+            for (int j = 0; j < number_of_appearance ; ++j)
+            {
+                printf("%s ", name->get_file_name().c_str());
+                fflush(stdout);
+            }
+        }
+        printf("\n");
+        fflush(stdout);
 }
 
 
