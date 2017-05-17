@@ -244,7 +244,16 @@ void *shuffle(void*)
                 }
 //                mapped_vector vector = it->second;
 //                vector.pop_back();
-                it->second.pop_back();
+
+                for (int j = 0; j < it->second.size(); ++j)
+                {
+                    if(!(*newKey < *(it->second[j].first)) && !(*(it->second[j].first) < *newKey))
+                    {
+                        it->second.erase(it->second.begin() + j);
+                        break;
+                    }
+                }
+//                it->second.pop_back();
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
                 {
@@ -524,7 +533,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             framework_function_fail(pthread_join_fail);
         }
     }
-    sort(output_vector.begin(), output_vector.end());
+
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
     {
         framework_function_fail(gettimeofday_fail);
@@ -533,6 +542,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
                   (end_time.tv_usec - start_time.tv_usec) * MICRO_TO_NANO_CONST);
     log_file_message(time_for_Reduce + to_string(total_time) + time_format);
     closing_log_file();
+
     return output_vector;
 
 }

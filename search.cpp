@@ -129,12 +129,15 @@ bool FileNameKey::operator<(const k1Base &other) const
 bool FileNameKey::operator<(const k2Base &other) const
 {
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
-    printf("self: %s   other: %s\n", this->get_file_name().c_str(), other_file.get_file_name().c_str());
-    fflush(stdout);
+//    printf("self: %s   other: %s\n", this->get_file_name().c_str(), other_file.get_file_name().c_str());
+//    fflush(stdout);
+
+
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
 //    int res = this->get_file_name().compare(other_file.get_file_name());
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
-
+    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
+    fflush(stdout);
     if(res < 0)
     {
         return true;
@@ -163,12 +166,12 @@ bool FileNameKey::operator<(const k3Base &other) const
     const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
 //    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
+//    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
+//    fflush(stdout);
 
-    if(res < 0)
-    {
-        return true;
-    }
-    return false;
+
+
+    return res < 0;
 }
 
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
