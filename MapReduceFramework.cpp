@@ -101,6 +101,8 @@ MapReduceBase* mapReduceBase;
 
 bool finishedMapThreads = false;
 
+bool autoReleaseResources = false;
+
 /////////////////////////Framework Error Messages////////////////////////////
 
 string pthread_create_fail = "pthread_create";
@@ -219,8 +221,8 @@ void *shuffle(void*)
             //TODO iterate different on pthreadContainer
             while(!(it->second.empty()))
             {
-                printf("thread %d vector size is :%ld    \n", pthread_self(),it->second.size());
-                fflush(stdout);
+//                printf("thread %d vector size is :%ld    \n", pthread_self(),it->second.size());
+//                fflush(stdout);
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
                 bool is_key_exist = false;
@@ -270,7 +272,7 @@ void *shuffle(void*)
     finished_shuffle = true;
     next_pair_to_read = 0;
     res = sem_destroy(&shuffle_sem);
-    printf("size of continer %d\n", shuffledVector.size());
+//    printf("size of continer %d\n", shuffledVector.size());
     if(res != 0)
     {
         framework_function_fail(sem_destroy_fail);
@@ -288,7 +290,6 @@ unsigned long set_chunk_size(unsigned long vec_size)
     }
     return current_chunk_size;
 }
-
 
 void *ExecMapFunc(void* mapReduce)
 {
@@ -413,9 +414,11 @@ void *ExecReduceFunc(void* mapReduce)
 
 
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
-                                    IN_ITEMS_VEC&itemsVec,
+                                    IN_ITEMS_VEC& itemsVec,
                                     int multiThreadLevel,
-                                    bool autoDeleteV2K2) {
+                                    bool autoDeleteV2K2)
+{
+    autoReleaseResources = autoDeleteV2K2;
     // First creates and writes to log file and starts timer
     create_log_file();
     // Map&Shuffle measure time
@@ -508,7 +511,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         framework_function_fail(gettimeofday_fail);
     };
 
-    printf("vector container size %d\n", shuffledVector.size());
+//    printf("vector container size %d\n", shuffledVector.size());
 
     //Fifth Reduce part
 //    prepare_to_reduce();
@@ -543,21 +546,29 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(time_for_Reduce + to_string(total_time) + time_format);
     closing_log_file();
 
+
+//    input_vec.clear();
+//
+//    pthreadToContainer.clear();
+//
+//    shuffledVector.clear();
+
     return output_vector;
 
 }
+
 
 
 void Emit2 (k2Base* key, v2Base* val)
 {
     // check what thread is running with self() and use the ID as a key
     // add to the shared container {<key - thread ID, val- thread map output container>}
-    printf("called Emit2\n");
-    fflush(stdout);
+//    printf("called Emit2\n");
+//    fflush(stdout);
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer[pthread_self()].push_back(new_pair);
-    printf("%d\n",pthread_self());
-    fflush(stdout);
+//    printf("%d\n",pthread_self());
+//    fflush(stdout);
     int sem_res = sem_post(&shuffle_sem);
     if(sem_res != 0)
     {

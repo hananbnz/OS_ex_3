@@ -2,38 +2,46 @@
 #include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
-//#include "string"
-#include <stdbool.h>
 #include <cstring>
 #include <dirent.h>
 #include "MapReduceClient.h"
 #include "MapReduceFramework.h"
 
-
 using namespace std;
 
-class FileNameKey : public k1Base, public k2Base, public k3Base
+
+
+
+/////////////////////////////CLASSES DEFINITIONS///////////////////////////////
+
+
+
+class FileName : public k1Base, public k2Base, public k3Base
 {
 public:
     /**
-     * A default FileNameKey constructor.
+     * A default FileName constructor.
      */
-    FileNameKey(){};
-
-    FileNameKey(string file_name)  {_fileName = file_name;};
+    FileName(){};
 
     /**
-     * A FileNameKey destructor.
+     * 
+     * @param file_name 
+     * @return 
      */
-    ~FileNameKey(){};
+    FileName(string file_name)  {_fileName = file_name;};
+
+    /**
+     * A FileName destructor.
+     */
+    ~FileName(){};
 
     string get_file_name() const { return _fileName;};
 
     bool operator<(const k1Base &other) const;
 
     bool operator<(const k2Base &other) const;
-    bool operator==(const k1Base &other) const;
-    bool operator>(const k2Base &other) const;
+
     bool operator<(const k3Base &other) const;
 
 private:
@@ -41,25 +49,25 @@ private:
 };
 
 
-class WordSearch: public v1Base, public v2Base, public v3Base
+class WordToSearch: public v1Base, public v2Base, public v3Base
 {
 public:
     /**
-     * A default FileNameKey constructor.
+     * A default FileName constructor.
      */
-    WordSearch(){};
+    WordToSearch(){};
 
-    WordSearch(string  word_search)  {_word_search = word_search;};
+    WordToSearch(string  word_search)  {_word_to_search = word_search;};
 
     /**
-     * A FileNameKey destructor.
+     * A FileName destructor.
      */
-    ~WordSearch(){};
+    ~WordToSearch(){};
 
-    string get_word() const { return _word_search;};
+    string get_word() const { return _word_to_search;};
 
 private:
-    string  _word_search;
+    string  _word_to_search;
 
 };
 
@@ -67,40 +75,8 @@ private:
 class MapReduceSearch: public MapReduceBase
 {
 public:
-
     void Map(const k1Base *const key, const v1Base *const val) const;
-//    {
-//        const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
-//        const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
-//        string s2 = word_val->get_word();
-//        char* directory_name = ((char*)file_key->get_file_name().c_str());
-//        DIR *dir = opendir(directory_name);
-//        if(dir)
-//        {
-//            struct dirent *ent;
-//            while((ent = readdir(dir)) != NULL)
-//            {
-//                string s1 = (string)ent->d_name;
-//                if (s1.find(s2) != std::string::npos)
-//                {
-//                    FileNameKey* k2 = new FileNameKey(s1);
-//                    WordSearch* v2 = new WordSearch(s2);
-//                    Emit2(k2, v2);
-//                }
-//            }
-//        }
-//    }
-
     void Reduce(const k2Base *const key, const V2_VEC &vals) const;
-//    {
-//        {
-//            auto k3 = (FileNameKey*)key;
-//            unsigned long list_size = vals.size();
-//            auto v3 = new WordSearch(to_string(list_size));
-//            Emit3(k3, v3);
-//        }
-//    }
-
 };
 
 ///////////////////////// class functions implementation //////////////////////
@@ -110,74 +86,37 @@ public:
  * @param other
  * @return
  */
-bool FileNameKey::operator<(const k1Base &other) const
+bool FileName::operator<(const k1Base &other) const
 {
-    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
-//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name
-            ().c_str());
-    //TODO changed to char*
-    //int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
-
-    if(res < 0)
-    {
-        return true;
-    }
-    return false;
+    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
+            .c_str());
+    return res < 0;
 }
 
-bool FileNameKey::operator<(const k2Base &other) const
+bool FileName::operator<(const k2Base &other) const
 {
-    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
-//    printf("self: %s   other: %s\n", this->get_file_name().c_str(), other_file.get_file_name().c_str());
-//    fflush(stdout);
-
-
-//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-//    int res = this->get_file_name().compare(other_file.get_file_name());
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
-    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
-    fflush(stdout);
-    if(res < 0)
-    {
-        return true;
-    }
-    return false;
+    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
+            .c_str());
+    return res < 0;
 }
 
-/**
-bool FileNameKey::operator>(const k2Base &other) const
+
+bool FileName::operator<(const k3Base &other) const
 {
-    return other < *this;
-}
-
-bool FileNameKey::operator==(const k1Base &other) const
-{
-    if(!(other < *this) && !(*this < other))
-    {
-        return true;
-    }
-    return false;
-}
-*/
-
-bool FileNameKey::operator<(const k3Base &other) const
-{
-    const FileNameKey& other_file = dynamic_cast<const FileNameKey&>(other);
-//    const FileNameKey& this_file = dynamic_cast<const FileNameKey&>(this);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
-//    printf("comparing %s to %s result : %d \n", this->get_file_name().c_str(),other_file.get_file_name().c_str(),res);
-//    fflush(stdout);
-
-
-
+    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
+            .c_str());
     return res < 0;
 }
 
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
 {
-    const FileNameKey* file_key = dynamic_cast<const FileNameKey*>(key);
-    const WordSearch* word_val = dynamic_cast<const WordSearch*>(val);
+    const FileName* file_key = dynamic_cast<const FileName*>(key);
+//    printf("Address of key is %p\n", (void *)key);
+//    printf("Address of file_key is %p\n", (void *)file_key);
+    const WordToSearch* word_val = dynamic_cast<const WordToSearch*>(val);
     string s2 = word_val->get_word();
     const char* directory_name = file_key->get_file_name().c_str();
     DIR *dir = opendir(directory_name);
@@ -189,10 +128,8 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
             string s1 = (string)ent->d_name;
             if (s1.find(s2) != std::string::npos)
             {
-                FileNameKey* k2 = new FileNameKey(s1);
-                WordSearch* v2 = new WordSearch(s2);
-                printf("In Emit2 key: %s, value: %s\n", k2->get_file_name().c_str(), v2->get_word().c_str());
-                fflush(stdout);
+                FileName* k2 = new FileName(s1);
+                WordToSearch* v2 = new WordToSearch(s2);
                 Emit2(k2, v2);
             }
         }
@@ -201,50 +138,78 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
 
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
-    auto k3 = (FileNameKey*)key;
+    auto k3 = (FileName*)key;
     unsigned long list_size = vals.size();
-    printf("key: %s, num: %d\n", k3->get_file_name().c_str(), list_size);
-    fflush(stdout);
-    auto v3 = new WordSearch(to_string(list_size));
+    auto v3 = new WordToSearch(to_string(list_size));
     Emit3(k3, v3);
 }
 
-/////////////////////////////// The Search program /////////////////////////////
 
+
+
+///////////////////////////// THE SEARCH PROGRAM ///////////////////////////////
+
+
+
+
+////////////////////////////////// Constants ///////////////////////////////////
 
 #define VALID_ARG_NUM 2
+string thread_init_fail = "Usage: <substring to search> "
+        "<folders, separated by space>";
 
+IN_ITEMS_VEC mapInput;
+OUT_ITEMS_VEC search_output_vector;
 
+////////////////////////////////// Functions ///////////////////////////////////
 
-string thread_init_fail = "Usage: <substring to search> <folders, separated by space>";
-
-void thread_library_function_fail(string text)
-{
-    fprintf(stderr, "MapReduceFramework Failure: %s failed\n", text.c_str());
-}
-
+/**
+ *
+ * @param programArguments
+ * @param numOfArg
+ * @return
+ */
 IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 {
     IN_ITEMS_VEC input_items_vec (numOfArg-2); // TODO check intialize values
     //TODO make pairs of (K1,V1), where V1 is the first arg - the word to search
     // and the K1's are the filenames arguments.
-    WordSearch* v1 = new WordSearch(programArguments[1]);
+    WordToSearch* v1 = new WordToSearch(programArguments[1]);
     for (int i = 2; i < numOfArg ; ++i)
     {
-        FileNameKey* k1 = new FileNameKey(programArguments[i]);
-        IN_ITEM input_item (k1, v1); // = new IN_ITEM(k1,v1);
+        FileName* k1 = new FileName(programArguments[i]);
+        IN_ITEM input_item (k1, v1);
         input_items_vec[i-2] = input_item;
     }
     return input_items_vec;
-
 }
 
 
-///
-/// \param argc
-/// \param argv
-/// \return
+void release_resources()
+{
+    for (int j = 0; j < mapInput.size(); ++j)
+    {
+        delete mapInput[j].first;
+//        delete mapInput[j].second;
+    }
+    for (int j = 0; j < search_output_vector.size(); ++j)
+    {
+        delete search_output_vector[j].first;
+        delete search_output_vector[j].second;
+    }
+}
 
+
+/////////////////////////////// Main Function  /////////////////////////////////
+
+
+
+/**
+ * 
+ * @param argc 
+ * @param argv 
+ * @return 
+ */
 int main(int argc, char * argv[])
 {
     if (argc < VALID_ARG_NUM)
@@ -253,25 +218,39 @@ int main(int argc, char * argv[])
         exit(1);
 
     }
-    IN_ITEMS_VEC mapInput = prepareToMap(argv, argc);
-    MapReduceSearch m;
-    OUT_ITEMS_VEC output_vector;
-    output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check
-    // values
+//    IN_ITEMS_VEC mapInput;
+//    for (int k = 0; k < 20; ++k)
+//    {
 
-    for (int i = 0; i < output_vector.size() ; ++i)
-    {
-        const FileNameKey* name = dynamic_cast<const FileNameKey*>(output_vector[i].first);
-        const WordSearch*  num = dynamic_cast<const WordSearch*>(output_vector[i].second);
-        int number_of_appearance = stoi(num->get_word());
-        printf("num of app %d \n", number_of_appearance);
-        for (int j = 0; j < number_of_appearance ; ++j)
-        {
-            printf("%s\n", name->get_file_name().c_str());
-            fflush(stdout);
+        mapInput = prepareToMap(argv, argc);
+        MapReduceSearch m;
+//        OUT_ITEMS_VEC search_output_vector;
+        search_output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check
+        // values
+        for (int i = 0; i < search_output_vector.size(); ++i) {
+            const FileName *name = dynamic_cast<const FileName *>(search_output_vector[i].first);
+            const WordToSearch *num = dynamic_cast<const WordToSearch *>(search_output_vector[i].second);
+            int number_of_appearance = stoi(num->get_word());
+//        printf("num of app %d \n", number_of_appearance);
+            for (int j = 0; j < number_of_appearance; ++j) {
+                printf("%s ", name->get_file_name().c_str());
+                fflush(stdout);
+            }
         }
-    }
-//    //TODO release memory
+        release_resources();
+//        mapInput.clear();
+//        search_output_vector.clear();
+//        printf("\n");
+//        fflush(stdout);
+//    }
+}
+
+
+
+
+
+//..................................TESTS .................................  //
+
 //    char buf[255];
 //    size_t buf_size = 1024;
 //    char* r_buf;
@@ -295,7 +274,4 @@ int main(int argc, char * argv[])
 //    printf("found 'osTargil' 'sos' 'sos'\n");
 //    printf("search finished...\n");
 
-}
 
-
-//void prepareToMap(std::string input_txt);
