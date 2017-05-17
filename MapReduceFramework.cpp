@@ -9,6 +9,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <unistd.h>
 #include <sys/time.h>
 
 
@@ -138,6 +139,7 @@ string finish_threadTypeReduce = "Thread ExecReduce terminated ";
 string time_for_Map_and_shuffle = "Map and Shuffle took ";
 string time_for_Reduce = "Reduce took ";
 string time_format = " ns\n";
+string Log_file_name = ".MapReduceFramework.log";
 
 //////////////////////////// Framework Error FUNCTIONS ////////////////////////
 
@@ -152,13 +154,14 @@ void framework_function_fail(string text)
 
 // A vriable to the log file
 ofstream outputFile;
+char buf[255];
+size_t buf_size = 1024;
 void create_log_file()
 {
-
-//    outputFile.open(getcwd(".MapReduceFramwork.log"));
-    //TODO general directory
-    outputFile.open("/cs/usr/hananbnz/safe/OS/ex_3/.MapReduceFramework.log");
-//    outputFile.open("/cs/usr/reuveny/safe/OS/ex_3/.MapReduceFramework.log");
+    char* r_buf;
+    r_buf = getcwd(buf, buf_size);
+    string file_to_open= (string)r_buf + Log_file_name;
+    outputFile.open(file_to_open);
     if(!outputFile.is_open())
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");

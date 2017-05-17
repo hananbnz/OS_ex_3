@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <iostream>
 #include <stdlib.h>
-#include <unistd.h>
 #include <cstring>
 #include <dirent.h>
 #include "MapReduceClient.h"
@@ -251,11 +250,7 @@ int main(int argc, char * argv[])
 
 //..................................TESTS .................................  //
 
-//    char buf[255];
-//    size_t buf_size = 1024;
-//    char* r_buf;
-//    r_buf = getcwd(buf, buf_size);
-//    std::cout << r_buf <<" !!!!" << '\n';
+//
 //    DIR *dir = opendir("/cs/usr/hananbnz/safe/OS/ex_3/os2015/exercise");
 //    if(dir)
 //    {
