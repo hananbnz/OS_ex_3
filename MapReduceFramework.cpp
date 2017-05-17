@@ -72,9 +72,16 @@ int sem_val;
 vector<pthread_t> multiThreadLevel_threads(4,NULL);
 
 /////////////////////// SHARED DATA STRUCTURES  //////////////////////////////
-IN_ITEMS_VEC input_vec;
 
+
+
+//vector<pair<k1Base*, v1Base*>> IN_ITEMS_VEC;
+IN_ITEMS_VEC input_vec;
+//
 map<pthread_t, mapped_vector> pthreadToContainer;
+
+//vector <pair<k2Base*, vector<v2Base*>>> shuffled_item;
+vector<shuffled_item> shuffledVector;
 
 
 /* comperator for the shuffled map insertion */
@@ -85,7 +92,7 @@ map<pthread_t, mapped_vector> pthreadToContainer;
 
 //map<k2Base*, shuffled_vec> shuffledContainer;
 
-vector<shuffled_item> shuffledVector;
+
 
 OUT_ITEMS_VEC output_vector;
 
@@ -212,6 +219,8 @@ void *shuffle(void*)
             //TODO iterate different on pthreadContainer
             while(!(it->second.empty()))
             {
+                printf("thread %d vector size is :%ld    \n", pthread_self(),it->second.size());
+                fflush(stdout);
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
                 bool is_key_exist = false;
@@ -233,6 +242,8 @@ void *shuffle(void*)
                     shuffled_item new_item = pair<k2Base*, shuffled_vec>(newKey, new_vec);
                     shuffledVector.push_back(new_item);
                 }
+//                mapped_vector vector = it->second;
+//                vector.pop_back();
                 it->second.pop_back();
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
@@ -259,15 +270,16 @@ void *shuffle(void*)
     pthread_exit(NULL);
 }
 
-unsigned long set_chunk_size()
+unsigned long set_chunk_size(unsigned long vec_size)
 {
     unsigned long current_chunk_size = CHUNK_SIZE;
-    if((next_pair_to_read + current_chunk_size) > input_vec.size())
+    if((next_pair_to_read + current_chunk_size) > vec_size)
     {
-        current_chunk_size = input_vec.size() - next_pair_to_read;
+        current_chunk_size = vec_size - next_pair_to_read;
     }
     return current_chunk_size;
 }
+
 
 void *ExecMapFunc(void* mapReduce)
 {
@@ -303,7 +315,7 @@ void *ExecMapFunc(void* mapReduce)
         {
             framework_function_fail(pthread_mutex_lock_fail);
         }
-        unsigned long current_chunk_size = set_chunk_size();
+        unsigned long current_chunk_size = set_chunk_size(input_vec.size());
         int begin = next_pair_to_read;
         unsigned long end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
@@ -339,12 +351,7 @@ void *ExecMapFunc(void* mapReduce)
 
 void *ExecReduceFunc(void* mapReduce)
 {
-    //create a container for each thread
-    mapped_vector* newMapVec = new mapped_vector;
-//    pthreadToContainer.insert(pair<pthread_t,
-//            mapped_vector>(pthread_self(), newMapVec));
-//    mapped_vector* newMapVec = new mapped_vector;
-//    pthreadToContainer[pthread_self()];
+
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_mutex);
     if(res != 0)
@@ -361,7 +368,9 @@ void *ExecReduceFunc(void* mapReduce)
 //    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce; // TODO check
     while (true)
     {
-        if(next_pair_to_read >= input_vec.size())
+//        printf("next_pair_to_read : %d, shuffledVector.size() : %d \n",next_pair_to_read, shuffledVector.size());
+//        fflush(stdout);
+        if(next_pair_to_read >= shuffledVector.size())
         {
             break;
         }
@@ -371,7 +380,7 @@ void *ExecReduceFunc(void* mapReduce)
         {
             framework_function_fail(pthread_mutex_lock_fail);
         }
-        unsigned long current_chunk_size = set_chunk_size();
+        unsigned long current_chunk_size = set_chunk_size(shuffledVector.size());
         int begin = next_pair_to_read;
         unsigned long end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
@@ -490,6 +499,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         framework_function_fail(gettimeofday_fail);
     };
 
+    printf("vector container size %d\n", shuffledVector.size());
+
     //Fifth Reduce part
 //    prepare_to_reduce();
     //execReduce call
@@ -535,6 +546,8 @@ void Emit2 (k2Base* key, v2Base* val)
     fflush(stdout);
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer[pthread_self()].push_back(new_pair);
+    printf("%d\n",pthread_self());
+    fflush(stdout);
     int sem_res = sem_post(&shuffle_sem);
     if(sem_res != 0)
     {
@@ -553,3 +566,12 @@ void Emit3 (k3Base* key, v3Base* val)
 //    mapped_item new_pair = pair<k3Base*, v3Base*>(key, val);
     output_vector.push_back(pair<k3Base*, v3Base*>(key, val));
 }
+
+
+//ExecReduce
+ //create a container for each thread
+ //mapped_vector* newMapVec = new mapped_vector;
+//    pthreadToContainer.insert(pair<pthread_t,
+//            mapped_vector>(pthread_self(), newMapVec));
+//    mapped_vector* newMapVec = new mapped_vector;
+//    pthreadToContainer[pthread_self()];
