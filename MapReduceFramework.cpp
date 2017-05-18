@@ -45,6 +45,8 @@ using namespace std;
  */
 #define FUNC_SUCCESS 0
 
+bool deleteV2K2 = false;
+
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
 typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
@@ -82,6 +84,8 @@ vector<pthread_t> multiThreadLevel_threads_Reduce;
 //vector<pair<k1Base*, v1Base*>> IN_ITEMS_VEC;
 IN_ITEMS_VEC input_vec;
 //
+
+
 map<pthread_t, mapped_vector> pthreadToContainer_Map;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
@@ -106,6 +110,13 @@ MapReduceBase* mapReduceBase;
 
 
 bool finishedMapThreads = false;
+
+
+struct sort_pred {
+    bool operator()(const std::pair<k3Base*, v3Base*> &left, const std::pair<k3Base*, v3Base*> &right) {
+        return left.first < right.first;
+    }
+};
 
 /////////////////////////Framework Error Messages////////////////////////////
 
@@ -206,6 +217,27 @@ struct timeval start_time, end_time;
 
 /////////////////////////// PROGRAM FUNCTIONS /////////////////////////////////
 
+
+void remove_pair(k2Base* newKey, vector<pair<k2Base*, v2Base*>> vec)
+{
+    for (int j = 0; j < vec.size(); ++j)
+    {
+        if(!(*newKey < *(vec[j].first)) && !(*(vec[j].first) < *newKey))
+        {
+
+            pair<k2Base*, v2Base*> pair_to_delete =  vec[j];
+            vec.erase(vec.begin() + j);
+//            if(deleteV2K2)
+//            {
+////                            delete pair_to_delete.first;
+////                delete pair_to_delete.second;
+//            }
+            break;
+        }
+    }
+}
+
+
 /**
  * 1. Create ExecMap threads (pthreads) - each one of them will exec chunk of
  * pairs in the map func
@@ -230,6 +262,7 @@ void *shuffle(void*)
             {
 //                printf("thread %d vector size is :%ld    \n", pthread_self(),it->second.size());
 //                fflush(stdout);
+
                 k2Base* newKey = it->second.back().first;
                 v2Base* newVal = it->second.back().second;
                 bool is_key_exist = false;
@@ -252,11 +285,21 @@ void *shuffle(void*)
                     shuffledVector.push_back(new_item);
                 }
 
+//                remove_pair(newKey, it->second); // TODO #2 add a delete function
+                //map<thread, vector<pair<k2Base*, v2Base*> >>
+                //it->second = vector<pair<k2Base*, v2Base*>
                 for (int j = 0; j < it->second.size(); ++j)
                 {
                     if(!(*newKey < *(it->second[j].first)) && !(*(it->second[j].first) < *newKey))
                     {
+
+                        pair<k2Base*, v2Base*> pair_to_delete =  it->second[j];
                         it->second.erase(it->second.begin() + j);
+                        if(deleteV2K2)
+                        {
+//                            delete pair_to_delete.first;
+                            delete pair_to_delete.second;
+                        }
                         break;
                     }
                 }
@@ -416,6 +459,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
                                     IN_ITEMS_VEC&itemsVec,
                                     int multiThreadLevel,
                                     bool autoDeleteV2K2) {
+    deleteV2K2 = autoDeleteV2K2;
     // First creates and writes to log file and starts timer
     create_log_file();
     // Map&Shuffle measure time
@@ -557,6 +601,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(finish_MapReduceFramwork);
     closing_log_file();
 
+
+    std::sort(output_vector.begin(), output_vector.end(), sort_pred());//TODO #1 check sort
     return output_vector;
 
 }

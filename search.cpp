@@ -159,6 +159,9 @@ string thread_init_fail = "Usage: <substring to search> "
 
 IN_ITEMS_VEC mapInput;
 OUT_ITEMS_VEC search_output_vector;
+bool frameworkDeleteResources = true;
+int multiThreadLevel = 4;
+
 
 ////////////////////////////////// Functions ///////////////////////////////////
 
@@ -224,7 +227,9 @@ int main(int argc, char * argv[])
         mapInput = prepareToMap(argv, argc);
         MapReduceSearch m;
 //        OUT_ITEMS_VEC search_output_vector;
-        search_output_vector = RunMapReduceFramework(m, mapInput, 4, true);//TODO check
+        search_output_vector = RunMapReduceFramework(m, mapInput,
+                                                     multiThreadLevel,
+                                                     frameworkDeleteResources);
         // values
         for (int i = 0; i < search_output_vector.size(); ++i) {
             const FileName *name = dynamic_cast<const FileName *>(search_output_vector[i].first);
@@ -237,6 +242,7 @@ int main(int argc, char * argv[])
             }
         }
         release_resources();
+    //TODO release k2,v2 resources
 //        mapInput.clear();
 //        search_output_vector.clear();
 //        printf("\n");
