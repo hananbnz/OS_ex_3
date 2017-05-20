@@ -144,8 +144,7 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 }
 
 
-/
-
+//
 ///////////////////////////// THE SEARCH PROGRAM ///////////////////////////////
 
 
