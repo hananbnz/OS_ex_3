@@ -114,7 +114,7 @@ bool finishedMapThreads = false;
 
 struct sort_pred {
     bool operator()(const std::pair<k3Base*, v3Base*> &left, const std::pair<k3Base*, v3Base*> &right) {
-        return left.first < right.first;
+        return *(left.first) < *(right.first);
     }
 };
 
@@ -165,8 +165,8 @@ void framework_function_fail(string text)
 
 // A vriable to the log file
 ofstream outputFile;
-char buf[255];
-size_t buf_size = 1024;
+char buf[530];
+size_t buf_size = 2000;
 void create_log_file()
 {
     char* r_buf;
@@ -298,7 +298,7 @@ void *shuffle(void*)
                         if(deleteV2K2)
                         {
 //                            delete pair_to_delete.first;
-                            delete pair_to_delete.second;
+//                            delete pair_to_delete.second;
                         }
                         break;
                     }
