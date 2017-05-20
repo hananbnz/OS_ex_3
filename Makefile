@@ -2,30 +2,33 @@ CC = g++
 CFLAGS = -Wall
 STD = -std=c++11
 FLAG = -c
-FILES = uthreads.cpp uthreads.h Thread.cpp Thread.h
-FILES2 = Thread.cpp
+FLAG2 = -o
+FILES = MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
+FILES2 = search.cpp MapReduceFramework.h MapReduceClient.h
 CLEAN = libuthreads.a uthreads.o Thread.o ex2.tar
-TARSRCS = uthreads.cpp Thread.cpp Thread.h Makefile README
+TARSRCS = MapReduceFramework.cpp search.cpp README Makefile
 
 #make
-all: libuthreads.a 
+all: MapReduceFramework.a 
 
 #object files
-uthreads.o: uthreads.cpp uthreads.h Thread.cpp Thread.h
+MapReduceFramework.o: MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
 	$(CC) $(CFLAGS) $(STD) $(FLAG) $(FILES)
 
-Thread.o: Thread.cpp Thread.h
+search.o: search.cpp MapReduceFramework.h MapReduceClient.h
 	$(CC) $(CFLAGS) $(STD) $(FLAG) $(FILES2)
 
 #Exectubles:
+search: search.o MapReduceFramework.h MapReduceClient.h
+	$(CC) $(CFLAGS) $(STD) $(FLAG2) search.o MapReduceFramework.h MapReduceClient.h
 
 #Library
-libuthreads.a: uthreads.o
-	ar rcs libuthreads.a uthreads.o
+MapReduceFramework.a: MapReduceFramework.o
+	ar rcs MapReduceFramework.a MapReduceFramework.o
 
 #Tar
-tar: libuthreads.a
-	tar -cvf ex2.tar $(TARSRCS)
+tar: MapReduceFramework.a
+	tar -cvf ex3.tar $(TARSRCS)
 
 #Valgrind
 val: 
