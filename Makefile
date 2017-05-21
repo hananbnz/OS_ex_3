@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -Wall
-STD = -std=c++11
+STD = -std=c++11 -pthread
 FLAG = -c
 FLAG2 = -o
 FILES = MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
@@ -11,16 +11,17 @@ TARSRCS = MapReduceFramework.cpp search.cpp README Makefile
 #make
 all: MapReduceFramework.a 
 
+#Exectubles:
+search: search.o MapReduceFramework.a
+	$(CC) $(CFLAGS) $(STD) search.o MapReduceFramework.a -o search
+
 #object files
 MapReduceFramework.o: MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
 	$(CC) $(CFLAGS) $(STD) $(FLAG) $(FILES)
 
+
 search.o: search.cpp MapReduceFramework.h MapReduceClient.h
 	$(CC) $(CFLAGS) $(STD) $(FLAG) $(FILES2)
-
-#Exectubles:
-search: search.o MapReduceFramework.h MapReduceClient.h
-	$(CC) $(CFLAGS) $(STD) $(FLAG2) search.o MapReduceFramework.h MapReduceClient.h
 
 #Library
 MapReduceFramework.a: MapReduceFramework.o
@@ -33,7 +34,7 @@ tar: MapReduceFramework.a
 #Valgrind
 val: 
 		-valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes \
-	 --undef-value-errors=yes --track-origins=yes ./run_all
+	 --undef-value-errors=yes --track-origins=yes ./search os os2015/exercise myFolder
 
 
 clean:
