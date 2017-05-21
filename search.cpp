@@ -135,6 +135,7 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
             }
         }
     }
+    closedir(dir);
 }
 
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
@@ -249,6 +250,7 @@ int main(int argc, char * argv[])
             }
         }
         release_resources();
+
     //TODO release k2,v2 resources
 //        mapInput.clear();
 //        search_output_vector.clear();
