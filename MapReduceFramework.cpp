@@ -115,6 +115,8 @@ typedef std::list<mapped_item> mapped_list;//TODO new
 //typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
 typedef std::pair<k2Base*, V2_VEC> shuffled_item;
 
+vector<mapped_item> garbage_collector;
+
 vector<pthread_t> multiThreadLevel_threads_Map;
 vector<pthread_t> multiThreadLevel_threads_Reduce;
 
@@ -126,6 +128,8 @@ map<pthread_t, mapped_vector> pthreadToContainer_Map;
 map<pthread_t, mapped_list> pthreadToContainer_Map_l;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
+
+map<pthread_t, pthread_mutex_t> mutex_map;
 
 //vector <pair<k2Base*, vector<v2Base*>>> shuffled_item;
 vector<shuffled_item> shuffledVector;
@@ -295,38 +299,50 @@ void *shuffle(void*)
     // while semaphore value>0 and threads left shuffle keeps running
     while(sem_val > 0 ||  !finishedMapThreads)
     {
-        for (auto it = pthreadToContainer_Map.begin(); it !=
-                pthreadToContainer_Map.end(); ++it)
+        for (auto &it :pthreadToContainer_Map)
         {
-            while(!(it->second.empty())) //while container not empty
+            while(!(it.second.empty())) //while container not empty
             {
-                k2Base* newKey = it->second.back().first;
-                v2Base* newVal = it->second.back().second;
+                res = pthread_mutex_lock(&mutex_map[it.first]);
+                if(res != 0)
+                {
+                    framework_function_fail(pthread_mutex_lock_fail);
+                }
+//                k2Base* newKey = it.second.back().first;
+//                v2Base* newVal = it.second.back().second;
                 bool is_key_exist = false;
                 // search for the key in container
+
                 for (int i = 0; i < shuffledVector.size(); ++i)
                 {
-                    if(!(*newKey < *(shuffledVector[i].first)) &&
-                            !(*(shuffledVector[i].first) < *newKey))
+                    if(!(*it.second.back().first < *(shuffledVector[i].first)) &&
+                            !(*(shuffledVector[i].first) < *it.second.back().first))
                     {
-                        shuffledVector[i].second.push_back(newVal);
+                        shuffledVector[i].second.push_back(it.second.back().second);
+                        delete it.second.back().first;
                         is_key_exist = true;
                         break;
                     }
                 }
                 // checks if key exists and if not found creates a new key
                 if(!is_key_exist) shuffledVector.push_back
-                            (create_new_item(newVal, newKey));
+                            (create_new_item(it.second.back().second, it.second.back().first));
                 // remove pair from vector
-//                it->second.erase(newKey);
-//                delete it->second.back().second;
-//                it->second.pop_back();
-                remove_pair(newKey, it->first);
+
+                garbage_collector.push_back(it.second.back());
+                pthreadToContainer_Map[it.first].erase(pthreadToContainer_Map[it.first].begin() + it.second.size());
+
                 // decrement semaphore
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
                 {
                     framework_function_fail(sem_wait_fail);
+                }
+
+                res = pthread_mutex_unlock(&mutex_map[it.first]);
+                if(res != 0)
+                {
+                    framework_function_fail(pthread_mutex_unlock_fail);
                 }
             }
         }
@@ -513,6 +529,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         {
             framework_function_fail(pthread_create_fail);
         }
+        pthread_mutex_t container_mutex = PTHREAD_MUTEX_INITIALIZER;
+        mutex_map[newExecMap] = container_mutex;
         multiThreadLevel_threads_Map.push_back(newExecMap);
         pthreadToContainer_Map[newExecMap];
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
@@ -623,21 +641,33 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     //------And last SORT and return output-------
     std::sort(output_vector.begin(), output_vector.end(), sort_pred());
 
-//    for(auto const &map1 : pthreadToContainer_Map) {
-//        // ent1.first is the first key
-//        for(auto const &vec : map1.second)
-//        {
-//            delete vec.first;
-//            delete vec.second;
-//
-//        }
-//    }
+    for (int l = 0; l < shuffledVector.size(); ++l)
+    {
+        if(shuffledVector[l].first != nullptr)
+        {
+            for (int i = 0; i < shuffledVector[l].second.size(); ++i)
+            {
+                delete shuffledVector[l].second[i];
+                shuffledVector[l].second[i] = nullptr;
+            }
+            delete shuffledVector[l].first;
+            shuffledVector[l].first = nullptr;
+        }
+
+    }
+
+
     return output_vector;
 
 }
 
 void Emit2 (k2Base* key, v2Base* val)
 {
+    res = pthread_mutex_lock(&mutex_map[pthread_self()]);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
 
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer_Map[pthread_self()].push_back(new_pair);
@@ -646,6 +676,12 @@ void Emit2 (k2Base* key, v2Base* val)
     if(sem_res != 0)
     {
         framework_function_fail(sem_post_fail);
+    }
+
+    res = pthread_mutex_unlock(&mutex_map[pthread_self()]);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
     }
 }
 

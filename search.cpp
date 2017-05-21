@@ -87,7 +87,7 @@ public:
  */
 bool FileName::operator<(const k1Base &other) const
 {
-    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    const FileName& other_file = (const FileName&)(other);
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
             .c_str());
     return res < 0;
@@ -95,7 +95,7 @@ bool FileName::operator<(const k1Base &other) const
 
 bool FileName::operator<(const k2Base &other) const
 {
-    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    const FileName& other_file = (const FileName&)(other);
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
             .c_str());
     return res < 0;
@@ -104,7 +104,7 @@ bool FileName::operator<(const k2Base &other) const
 
 bool FileName::operator<(const k3Base &other) const
 {
-    const FileName& other_file = dynamic_cast<const FileName&>(other);
+    const FileName& other_file = (const FileName&)(other);
     int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
             .c_str());
     return res < 0;
@@ -112,10 +112,10 @@ bool FileName::operator<(const k3Base &other) const
 
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
 {
-    const FileName* file_key = dynamic_cast<const FileName*>(key);
+    const FileName* file_key = (const FileName*)(key);
 //    printf("Address of key is %p\n", (void *)key);
 //    printf("Address of file_key is %p\n", (void *)file_key);
-    const WordToSearch* word_val = dynamic_cast<const WordToSearch*>(val);
+    const WordToSearch* word_val = (const WordToSearch*)(val);
     string s2 = word_val->get_word();
     const char* directory_name = file_key->get_file_name().c_str();
     DIR *dir = opendir(directory_name);
@@ -137,7 +137,9 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
 
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
-    auto k3 = (FileName*)key;
+
+    auto file_name = (FileName*)key;
+    FileName* k3 = new FileName(file_name->get_file_name());
     unsigned long list_size = vals.size();
     auto v3 = new WordToSearch(to_string(list_size));
     Emit3(k3, v3);
@@ -188,15 +190,19 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 
 void release_resources()
 {
+    delete mapInput[0].second;
+    mapInput[0].second = nullptr;
     for (int j = 0; j < mapInput.size(); ++j)
     {
         delete mapInput[j].first;
-//        delete mapInput[j].second;
+        mapInput[j].first = nullptr;
     }
     for (int j = 0; j < search_output_vector.size(); ++j)
     {
         delete search_output_vector[j].first;
+        search_output_vector[j].first = nullptr;
         delete search_output_vector[j].second;
+        search_output_vector[j].second = nullptr;
     }
 }
 
@@ -231,8 +237,8 @@ int main(int argc, char * argv[])
                                                      frameworkDeleteResources);
         // values
         for (int i = 0; i < search_output_vector.size(); ++i) {
-            const FileName *name = dynamic_cast<const FileName *>(search_output_vector[i].first);
-            const WordToSearch *num = dynamic_cast<const WordToSearch *>(search_output_vector[i].second);
+            const FileName *name = (const FileName *)(search_output_vector[i].first);
+            const WordToSearch *num = (const WordToSearch *)(search_output_vector[i].second);
             int number_of_appearance = stoi(num->get_word());
 //        printf("num of app %d \n", number_of_appearance);
             for (int j = 0; j < number_of_appearance; ++j) {
