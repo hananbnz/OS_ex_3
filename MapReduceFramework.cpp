@@ -662,12 +662,11 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     pthread_mutex_destroy(&nextValue_mutex);
 
     pthread_mutex_destroy(&logFile_mutex);
-//
-//    for (int m = 0; m < mutex_map.size() ; ++m)
-//    {
-//        pthread_mutex_destroy(&mutex_map[m]);
-//    }
 
+    for (auto &map: mutex_map)
+    {
+        pthread_mutex_destroy(&map.second);
+    }
     return output_vector;
 
 }
