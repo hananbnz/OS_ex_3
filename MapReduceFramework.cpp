@@ -653,6 +653,21 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
             }
         }
     }
+    //kill mutex
+
+    pthread_mutex_destroy(&pthreadToContainer_Map_mutex);
+
+    pthread_mutex_destroy(&pthreadToContainer_Reduce_mutex);
+
+    pthread_mutex_destroy(&nextValue_mutex);
+
+    pthread_mutex_destroy(&logFile_mutex);
+//
+//    for (int m = 0; m < mutex_map.size() ; ++m)
+//    {
+//        pthread_mutex_destroy(&mutex_map[m]);
+//    }
+
     return output_vector;
 
 }
