@@ -5,7 +5,7 @@ FLAG = -c
 FLAG2 = -o
 FILES = MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
 FILES2 = search.cpp MapReduceFramework.h MapReduceClient.h
-CLEAN = libuthreads.a uthreads.o Thread.o ex2.tar
+CLEAN = MapReduceFramework.a search.o MapReduceFramework.o ex3.tar
 TARSRCS = MapReduceFramework.cpp search.cpp README Makefile
 
 #make

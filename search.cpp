@@ -210,7 +210,7 @@ void release_resources()
  * @param argc 
  * @param argv 
  * @return 
- */
+// */
 int main(int argc, char * argv[])
 {
     if (argc < VALID_ARG_NUM)
