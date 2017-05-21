@@ -110,8 +110,6 @@ int sem_val;
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
 
-typedef std::list<mapped_item> mapped_list;//TODO new
-
 //typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
 typedef std::pair<k2Base*, V2_VEC> shuffled_item;
 
@@ -124,8 +122,6 @@ vector<pthread_t> multiThreadLevel_threads_Reduce;
 IN_ITEMS_VEC input_vec;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Map;
-
-map<pthread_t, mapped_list> pthreadToContainer_Map_l;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
 
@@ -249,35 +245,35 @@ struct timeval start_time, end_time;
 
 // ------------------------------ PROGRAM FUNCTIONS --------------------------
 
-/**
- * This function gets a key pointer(K2Base*) and a pthread id and removes the
- * matching key pair from the pthread container
- * @param newKey K2Base pointer
- * @param id pthread_t represents the thread which from his container the
- * function removes the pair.
- */
-void remove_pair(k2Base* newKey, pthread_t id)
-{
-    for (int j = 0; j < pthreadToContainer_Map[id].size(); ++j)
-    {
-        if(!(*newKey < *(pthreadToContainer_Map[id][j].first)) &&
-                !(*(pthreadToContainer_Map[id][j].first) < *newKey))
-        {
-            pair<k2Base*, v2Base*> pair_to_delete =
-                    pthreadToContainer_Map[id][j];
-            pthreadToContainer_Map[id].erase(pthreadToContainer_Map[id].begin()
-                                             + j);
-            if(deleteV2K2)
-            {
-//                pair_to_delete.first = nullptr;
-//                pair_to_delete.second = nullptr;
-//                delete pair_to_delete.first;
-//                delete pair_to_delete.second;
-            }
-            break;
-        }
-    }
-}
+///**
+// * This function gets a key pointer(K2Base*) and a pthread id and removes the
+// * matching key pair from the pthread container
+// * @param newKey K2Base pointer
+// * @param id pthread_t represents the thread which from his container the
+// * function removes the pair.
+// */
+//void remove_pair(k2Base* newKey, pthread_t id)
+//{
+//    for (int j = 0; j < pthreadToContainer_Map[id].size(); ++j)
+//    {
+//        if(!(*newKey < *(pthreadToContainer_Map[id][j].first)) &&
+//                !(*(pthreadToContainer_Map[id][j].first) < *newKey))
+//        {
+//            pair<k2Base*, v2Base*> pair_to_delete =
+//                    pthreadToContainer_Map[id][j];
+//            pthreadToContainer_Map[id].erase(pthreadToContainer_Map[id].begin()
+//                                             + j);
+//            if(deleteV2K2)
+//            {
+////                pair_to_delete.first = nullptr;
+////                pair_to_delete.second = nullptr;
+////                delete pair_to_delete.first;
+////                delete pair_to_delete.second;
+//            }
+//            break;
+//        }
+//    }
+//}
 
 shuffled_item create_new_item(v2Base* newVal, k2Base* newKey)
 {
@@ -319,7 +315,7 @@ void *shuffle(void*)
                             !(*(shuffledVector[i].first) < *it.second.back().first))
                     {
                         shuffledVector[i].second.push_back(it.second.back().second);
-                        delete it.second.back().first;
+                        if(deleteV2K2) delete it.second.back().first;
                         is_key_exist = true;
                         break;
                     }
@@ -641,22 +637,22 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     //------And last SORT and return output-------
     std::sort(output_vector.begin(), output_vector.end(), sort_pred());
 
-    for (int l = 0; l < shuffledVector.size(); ++l)
+    if(deleteV2K2)
     {
-        if(shuffledVector[l].first != nullptr)
+        for (int l = 0; l < shuffledVector.size(); ++l)
         {
-            for (int i = 0; i < shuffledVector[l].second.size(); ++i)
+            if(shuffledVector[l].first != nullptr)
             {
-                delete shuffledVector[l].second[i];
-                shuffledVector[l].second[i] = nullptr;
+                for (int i = 0; i < shuffledVector[l].second.size(); ++i)
+                {
+                    delete shuffledVector[l].second[i];
+                    shuffledVector[l].second[i] = nullptr;
+                }
+                delete shuffledVector[l].first;
+                shuffledVector[l].first = nullptr;
             }
-            delete shuffledVector[l].first;
-            shuffledVector[l].first = nullptr;
         }
-
     }
-
-
     return output_vector;
 
 }

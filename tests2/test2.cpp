@@ -1,15 +1,6 @@
 #include <iostream>
-#include <stdlib.h>
-#include "MapReduceClient.h"
-#include "MapReduceFramework.h"
-
-pthread_mutex_t k2_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-std::vector<k2Base *> k2;
-
-pthread_mutex_t v2_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-std::vector<v2Base *> v2;
+#include "../MapReduceClient.h"
+#include "../MapReduceFramework.h"
 
 class elements : public k1Base,public k2Base,public k3Base,public v1Base,public v2Base,public v3Base
 {
@@ -58,23 +49,11 @@ public:
     {
         if ((((elements*)key)->num)%2 == 0)
         {
-            pthread_mutex_lock(&k2_mutex);
-            pthread_mutex_lock(&v2_mutex);
-            k2.push_back(new elements(0));
-            v2.push_back(new elements(1));
-            Emit2(k2[k2.size() -1],v2[v2.size() -1]);
-            pthread_mutex_unlock(&k2_mutex);
-            pthread_mutex_unlock(&v2_mutex);
+            Emit2(new elements(0),new elements(1));
         }
         else
         {
-            pthread_mutex_lock(&k2_mutex);
-            pthread_mutex_lock(&v2_mutex);
-            k2.push_back(new elements(1));
-            v2.push_back(new elements(1));
-            Emit2(k2[k2.size() -1],v2[v2.size() -1]);
-            pthread_mutex_unlock(&k2_mutex);
-            pthread_mutex_unlock(&v2_mutex);
+            Emit2(new elements(1),new elements(1));
         }
         delete key;
         delete val;
@@ -97,7 +76,7 @@ int main(int argc, char *argv[])
     int even = 0;
     tester s;
     IN_ITEMS_VEC in_items_vec;
-    for (int j = 0; j < 1000; ++j)
+    for (int j = 0; j < 1000000; ++j)
     {
         i = std::rand();
         if (i%2 == 0)
@@ -109,7 +88,7 @@ int main(int argc, char *argv[])
         }
         in_items_vec.push_back(std::pair<k1Base *, v1Base *>(new elements(i), NULL));
     }
-    OUT_ITEMS_VEC result = RunMapReduceFramework(s, in_items_vec, 10, false);
+    OUT_ITEMS_VEC result = RunMapReduceFramework(s, in_items_vec, 10, true);
 
     if (result.size() != 2)
     {
@@ -126,12 +105,6 @@ int main(int argc, char *argv[])
     else
     {
         std::cout<<"good"<<std::endl;
-    }
-    for (int k = 0; k < k2.size(); ++k) {
-        delete k2[k];
-    }
-    for (int l = 0; l < v2.size(); ++l) {
-        delete v2[l];
     }
     delete result[0].first;
     delete result[0].second;
