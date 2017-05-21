@@ -109,6 +109,9 @@ int sem_val;
 
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
+
+typedef std::list<mapped_item> mapped_list;//TODO new
+
 //typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
 typedef std::pair<k2Base*, V2_VEC> shuffled_item;
 
@@ -119,6 +122,8 @@ vector<pthread_t> multiThreadLevel_threads_Reduce;
 IN_ITEMS_VEC input_vec;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Map;
+
+map<pthread_t, mapped_list> pthreadToContainer_Map_l;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
 
@@ -260,6 +265,8 @@ void remove_pair(k2Base* newKey, pthread_t id)
                                              + j);
             if(deleteV2K2)
             {
+//                pair_to_delete.first = nullptr;
+//                pair_to_delete.second = nullptr;
 //                delete pair_to_delete.first;
 //                delete pair_to_delete.second;
             }
@@ -306,12 +313,14 @@ void *shuffle(void*)
                         is_key_exist = true;
                         break;
                     }
-
                 }
                 // checks if key exists and if not found creates a new key
                 if(!is_key_exist) shuffledVector.push_back
                             (create_new_item(newVal, newKey));
                 // remove pair from vector
+//                it->second.erase(newKey);
+//                delete it->second.back().second;
+//                it->second.pop_back();
                 remove_pair(newKey, it->first);
                 // decrement semaphore
                 int sem_res = sem_wait(&shuffle_sem);
@@ -613,6 +622,16 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     //------And last SORT and return output-------
     std::sort(output_vector.begin(), output_vector.end(), sort_pred());
+
+//    for(auto const &map1 : pthreadToContainer_Map) {
+//        // ent1.first is the first key
+//        for(auto const &vec : map1.second)
+//        {
+//            delete vec.first;
+//            delete vec.second;
+//
+//        }
+//    }
     return output_vector;
 
 }
