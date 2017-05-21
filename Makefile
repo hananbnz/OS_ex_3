@@ -12,8 +12,8 @@ TARSRCS = MapReduceFramework.cpp search.cpp README Makefile
 all: MapReduceFramework.a 
 
 #Exectubles:
-search: search.o MapReduceFramework.a
-	$(CC) $(CFLAGS) $(STD) search.o MapReduceFramework.a -o search
+Search: search.o MapReduceFramework.a
+	$(CC) $(CFLAGS) $(STD) search.o MapReduceFramework.a -o Search
 
 #object files
 MapReduceFramework.o: MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
