@@ -110,6 +110,8 @@ bool FileName::operator<(const k3Base &other) const
     return res < 0;
 }
 
+
+
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
 {
     const FileName* file_key = (const FileName*)(key);
