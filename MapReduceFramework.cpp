@@ -99,6 +99,8 @@ pthread_mutex_t logFile_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t finished_Map_Threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t check_time_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t emit3_insert = PTHREAD_MUTEX_INITIALIZER;
 sem_t shuffle_sem;
 
 //lock/unlock result varaiables
@@ -796,7 +798,17 @@ void Emit2 (k2Base* key, v2Base* val)
 
 void Emit3 (k3Base* key, v3Base* val)
 {
+    int res = pthread_mutex_lock(&emit3_insert);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     output_vector.push_back(pair<k3Base*, v3Base*>(key, val));
+    res = pthread_mutex_unlock(&emit3_insert);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
 }
 
 

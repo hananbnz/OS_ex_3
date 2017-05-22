@@ -253,6 +253,7 @@ int main(int argc, char * argv[])
                 }
             }
         }
+    cout<< "ended main"<<endl;
     release_resources();
     return 0;
 }
