@@ -246,13 +246,16 @@ int main(int argc, char * argv[])
             int number_of_appearance = stoi(num->get_word());
 //        printf("num of app %d \n", number_of_appearance);
             for (int j = 0; j < number_of_appearance; ++j) {
-                printf("%s ", name->get_file_name().c_str());
+                printf("%s", name->get_file_name().c_str());
                 fflush(stdout);
+                if((j < number_of_appearance-1 ) || (i < search_output_vector
+                                                                 .size()-1))
+                {
+                    printf(" ");
+                    fflush(stdout);
+                }
             }
-
         }
-        printf("\n");
-        fflush(stdout);
         release_resources();
 
     //TODO release k2,v2 resources

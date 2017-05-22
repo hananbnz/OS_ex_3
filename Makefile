@@ -34,7 +34,7 @@ tar: MapReduceFramework.a
 #Valgrind
 val: 
 		-valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes \
-	 --undef-value-errors=yes --track-origins=yes ./search os os2015/exercise myFolder
+	 --undef-value-errors=yes --track-origins=yes ./Search os os2015/exercise myFolder
 
 
 clean:
