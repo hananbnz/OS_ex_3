@@ -159,13 +159,16 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 ////////////////////////////////// Constants ///////////////////////////////////
 
 #define VALID_ARG_NUM 2
+
+#define MULTI_THREADS_LEVEL 10
+
 string thread_init_fail = "Usage: <substring to search> "
         "<folders, separated by space>";
 
 IN_ITEMS_VEC mapInput;
 OUT_ITEMS_VEC search_output_vector;
 bool frameworkDeleteResources = true;
-int multiThreadLevel = 4;
+//int multiThreadLevel = 4;
 
 
 ////////////////////////////////// Functions ///////////////////////////////////
@@ -237,7 +240,7 @@ int main(int argc, char * argv[])
         MapReduceSearch m;
 //        OUT_ITEMS_VEC search_output_vector;
         search_output_vector = RunMapReduceFramework(m, mapInput,
-                                                     multiThreadLevel,
+                                                     MULTI_THREADS_LEVEL,
                                                      frameworkDeleteResources);
         // values
         for (int i = 0; i < search_output_vector.size(); ++i) {
@@ -246,25 +249,16 @@ int main(int argc, char * argv[])
             int number_of_appearance = stoi(num->get_word());
 //        printf("num of app %d \n", number_of_appearance);
             for (int j = 0; j < number_of_appearance; ++j) {
-                printf("%s", name->get_file_name().c_str());
-//                fflush(stdout);
+                cout << name->get_file_name().c_str();
                 if((j < number_of_appearance-1 ) || (i < search_output_vector
                                                                  .size()-1))
                 {
-                    printf(" ");
-//                    fflush(stdout);
+                    cout << " ";
                 }
             }
         }
-//        fflush(stdout);
-        release_resources();
-
-    //TODO release k2,v2 resources
-//        mapInput.clear();
-//        search_output_vector.clear();
-//        printf("\n");
-//        fflush(stdout);
-//    }
+    release_resources();
+    return 0;
 }
 
 //os os2015/exercise myFolder

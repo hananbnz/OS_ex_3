@@ -96,6 +96,8 @@ pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t logFile_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t finished_Map_Threads_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t check_time_mutex = PTHREAD_MUTEX_INITIALIZER;
 sem_t shuffle_sem;
 
 //lock/unlock result varaiables
@@ -242,11 +244,21 @@ void closing_log_file()
 
 string get_cur_time()
 {
+    int res  = pthread_mutex_lock(&check_time_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     auto t = time(nullptr);
     auto tm = *std::localtime(&t);
 
     stringstream ss;
     ss << put_time(&tm, "[%d.%m.%Y %H:%M:%S]");
+    res  = pthread_mutex_unlock(&check_time_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
     return ss.str();
 }
 /**
@@ -378,6 +390,11 @@ void *shuffle(void*)
             framework_function_fail(pthread_mutex_lock_fail);
         }
     }
+    res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     res  = pthread_mutex_lock(&nextValue_mutex);
     if(res !=0)
     {
@@ -433,23 +450,28 @@ void *ExecMapFunc(void*)
     // in the func will send one-by-one pairs to map
     while (true)
     {
-//        int res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
-        //if there is nothing left to read then thread exit
-        if(next_pair_to_read >= input_vec.size())
-        {
-            break;
-        }
-
-//        //locking next value mutex
-        res  = pthread_mutex_lock(&nextValue_mutex);
+        int res  = pthread_mutex_lock(&nextValue_mutex);
         if(res != 0)
         {
             framework_function_fail(pthread_mutex_lock_fail);
         }
+        //if there is nothing left to read then thread exit
+        if(next_pair_to_read >= input_vec.size())
+        {
+            res  = pthread_mutex_unlock(&nextValue_mutex);
+            if(res != 0)
+            {
+                framework_function_fail(pthread_mutex_unlock_fail);
+            }
+            break;
+        }
+
+//        //locking next value mutex
+//        res  = pthread_mutex_lock(&nextValue_mutex);
+//        if(res != 0)
+//        {
+//            framework_function_fail(pthread_mutex_lock_fail);
+//        }
 
         //get chunk size using outer function
         unsign_l current_chunk_size = set_chunk_size(input_vec.size());
@@ -490,23 +512,28 @@ void *ExecReduceFunc(void*)
     }
     while (true)
     {
-//        int res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
-        //if there is nothing left to read then thread exit
-        if(next_pair_to_read >= shuffledVector.size())
-        {
-            break;
-        }
-
-        //locking mutex
-        res  = pthread_mutex_lock(&nextValue_mutex);
+        int res  = pthread_mutex_lock(&nextValue_mutex);
         if(res != 0)
         {
             framework_function_fail(pthread_mutex_lock_fail);
         }
+        //if there is nothing left to read then thread exit
+        if(next_pair_to_read >= shuffledVector.size())
+        {
+            res  = pthread_mutex_unlock(&nextValue_mutex);
+            if(res != 0)
+            {
+                framework_function_fail(pthread_mutex_unlock_fail);
+            }
+            break;
+        }
+
+        //locking mutex
+//        res  = pthread_mutex_lock(&nextValue_mutex);
+//        if(res != 0)
+//        {
+//            framework_function_fail(pthread_mutex_lock_fail);
+//        }
 
         unsign_l current_chunk_size = set_chunk_size(shuffledVector.size());
         unsign_l begin = next_pair_to_read;
@@ -721,6 +748,10 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     pthread_mutex_destroy(&nextValue_mutex);
 
     pthread_mutex_destroy(&logFile_mutex);
+
+    pthread_mutex_destroy(&check_time_mutex);
+
+    pthread_mutex_destroy(&finished_Map_Threads_mutex);
 
     for (auto &map: mutex_map)
     {
