@@ -61,6 +61,7 @@ using namespace std;
 #define FUNC_SUCCESS 0
 
 typedef unsigned long unsign_l;
+typedef unsigned int unsign_i;
 
 // ----------------------------- Global variables ---------------------------
 
@@ -80,8 +81,6 @@ bool finishedMapThreads = false;
  */
 unsign_l next_pair_to_read = 0;
 
-bool finished_shuffle = false;
-
 ofstream outputFile;
 
 char buf[LOG_BUF_SIZE];
@@ -96,6 +95,7 @@ pthread_mutex_t nextValue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t logFile_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_mutex_t time_mutex = PTHREAD_MUTEX_INITIALIZER;
 sem_t shuffle_sem;
 
 //lock/unlock result varaiables
@@ -187,11 +187,6 @@ void framework_function_fail(string text)
 
 // --------------------------  LOG FILE FUNCTIONS  ---------------------------
 
-// A variable to the log file
-//TODO #1
-//ofstream outputFile;
-//char buf[255];
-//size_t buf_size = 1024;
 void create_log_file()
 {
     char* r_buf;
@@ -319,7 +314,7 @@ void *shuffle(void*)
                 bool is_key_exist = false;
                 // search for the key in container
 
-                for (int i = 0; i < shuffledVector.size(); ++i)
+                for (unsign_i i = 0; i < shuffledVector.size(); ++i)
                 {
                     if(!(*it.second.back().first < *(shuffledVector[i].first)) &&
                             !(*(shuffledVector[i].first) < *it.second.back().first))
@@ -359,7 +354,6 @@ void *shuffle(void*)
             framework_function_fail(sem_getvalue_fail);
         }
     }
-    finished_shuffle = true;
     next_pair_to_read = 0;
     res = sem_destroy(&shuffle_sem);
     if(res != 0)
@@ -387,7 +381,7 @@ unsign_l set_chunk_size(unsign_l vec_size)
 }
 
 
-void *ExecMapFunc(void* mapReduce)
+void *ExecMapFunc(void*)
 {
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_Map_mutex);////TODO change to pthreadToContainer_mutex
@@ -530,7 +524,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     for (int i = 0; i < multiThreadLevel; ++i)
     {
         pthread_t newExecMap;
-        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, 0);
+        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
         if(thread_res != 0)
         {
             framework_function_fail(pthread_create_fail);
@@ -543,7 +537,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     }
 
     // if pthreadToContainer is initialized unlock pthreadToContainer mutex
-    if (pthreadToContainer_Map.size() == multiThreadLevel)
+    if (pthreadToContainer_Map.size() == (unsign_i)multiThreadLevel)
     {//UNLOCKING pthreadToContainer mutex
         res = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
         if(res != 0)
@@ -554,7 +548,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     // -----Forth SHUFFLE-----
     pthread_t shuffleThread;
-    int thread_res = pthread_create(&shuffleThread, NULL, shuffle, 0);
+    int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
     log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
     if(thread_res != 0)
     {
@@ -604,7 +598,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     for (int i = 0; i < multiThreadLevel; ++i)
     {
         pthread_t ExecReduce;
-        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,0);
+        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
         if(reduce_res != 0)
         {
             framework_function_fail(pthread_create_fail);
@@ -615,7 +609,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     }
 
     //UNLOCKING pthreadToContainer reduce mutex
-    if (pthreadToContainer_Reduce.size() >= multiThreadLevel)
+    if (pthreadToContainer_Reduce.size() >= (unsign_i)multiThreadLevel)
     {
         //unlocking mutex
         res = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
@@ -649,11 +643,11 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     if(deleteV2K2)
     {
-        for (int l = 0; l < shuffledVector.size(); ++l)
+        for (unsign_i l = 0; l < shuffledVector.size(); ++l)
         {
             if(shuffledVector[l].first != nullptr)
             {
-                for (int i = 0; i < shuffledVector[l].second.size(); ++i)
+                for (unsign_i i = 0; i < shuffledVector[l].second.size(); ++i)
                 {
                     delete shuffledVector[l].second[i];
                     shuffledVector[l].second[i] = nullptr;
