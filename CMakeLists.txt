@@ -3,6 +3,6 @@ project(ex_3)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-set(SOURCE_FILES /cs/usr/hananbnz/safe/OS/ex_3/tests/Test_28/WordFrequencies.cpp MapReduceClient.h MapReduceFramework.h MapReduceFramework.cpp
+set(SOURCE_FILES search.cpp MapReduceClient.h MapReduceFramework.h MapReduceFramework.cpp
         MapReduceClient.cpp)
 add_executable(ex_3 ${SOURCE_FILES})
