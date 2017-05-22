@@ -380,7 +380,7 @@ void *shuffle(void*)
         }
     }
     res  = pthread_mutex_lock(&nextValue_mutex);
-    if(res != 0)
+    if(res !=0)
     {
         framework_function_fail(pthread_mutex_lock_fail);
     }
