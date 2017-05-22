@@ -6,7 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/MapReduceClient.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/MapReduceFramework.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/tests/Test_6/GridShamansFinder.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/search.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/MapReduceClient.cpp" isTestSource="false" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

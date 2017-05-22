@@ -199,12 +199,12 @@ void release_resources()
 {
     delete mapInput[0].second;
     mapInput[0].second = nullptr;
-    for (int j = 0; j < mapInput.size(); ++j)
+    for (unsigned int j = 0; j < mapInput.size(); ++j)
     {
         delete mapInput[j].first;
         mapInput[j].first = nullptr;
     }
-    for (int j = 0; j < search_output_vector.size(); ++j)
+    for (unsigned int j = 0; j < search_output_vector.size(); ++j)
     {
         delete search_output_vector[j].first;
         search_output_vector[j].first = nullptr;
@@ -243,7 +243,7 @@ int main(int argc, char * argv[])
                                                      MULTI_THREADS_LEVEL,
                                                      frameworkDeleteResources);
         // values
-        for (int i = 0; i < search_output_vector.size(); ++i) {
+        for (unsigned int i = 0; i < search_output_vector.size(); ++i) {
             const FileName *name = (const FileName *)(search_output_vector[i].first);
             const WordToSearch *num = (const WordToSearch *)(search_output_vector[i].second);
             int number_of_appearance = stoi(num->get_word());
