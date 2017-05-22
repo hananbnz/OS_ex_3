@@ -96,8 +96,7 @@ bool FileName::operator<(const k1Base &other) const
 bool FileName::operator<(const k2Base &other) const
 {
     const FileName& other_file = (const FileName&)(other);
-    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name()
-            .c_str());
+    int res = strcmp(this->get_file_name().c_str(), other_file.get_file_name().c_str());
     return res < 0;
 }
 
@@ -114,16 +113,13 @@ bool FileName::operator<(const k3Base &other) const
 
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
 {
-    const FileName* file_key = (const FileName*)(key);
-//    printf("Address of key is %p\n", (void *)key);
-//    printf("Address of file_key is %p\n", (void *)file_key);
-    const WordToSearch* word_val = (const WordToSearch*)(val);
+    FileName* file_key = (FileName*)(key);
+    WordToSearch* word_val = (WordToSearch*)(val);
     string s2 = word_val->get_word();
-    const char* directory_name = file_key->get_file_name().c_str();
-    DIR *dir = opendir(directory_name);
-    if(dir)
+    DIR *dir;
+    struct dirent *ent;
+    if((dir = opendir(file_key->get_file_name().c_str())))
     {
-        struct dirent *ent;
         while((ent = readdir(dir)) != NULL)
         {
             string s1 = (string)ent->d_name;

@@ -1,6 +1,6 @@
 #include <iostream>
-#include "MapReduceClient.h"
-#include "MapReduceFramework.h"
+#include "../MapReduceClient.h"
+#include "../MapReduceFramework.h"
 
 class elements : public k1Base,public k2Base,public k3Base,public v1Base,public v2Base,public v3Base
 {

@@ -13,6 +13,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <sys/time.h>
+#include <iostream>
 
 
 using namespace std;
@@ -138,8 +139,8 @@ MapReduceBase* mapReduceBase;
 
 struct sort_pred
 {
-    bool operator()(const std::pair<k3Base*, v3Base*> &left,
-                    const std::pair<k3Base*, v3Base*> &right)
+    bool operator()(std::pair<k3Base*, v3Base*> &left,
+                    std::pair<k3Base*, v3Base*> &right)
     {
         return *(left.first) < *(right.first);
     }
@@ -333,13 +334,14 @@ void *shuffle(void*)
         }
         for (auto &it :pthreadToContainer_Map)
         {
+            res = pthread_mutex_lock(&(mutex_map[it.first]));
+            if(res != 0)
+            {
+                framework_function_fail(pthread_mutex_lock_fail);
+            }
             while(!(it.second.empty())) //while container not empty
             {
-                res = pthread_mutex_lock(&mutex_map[it.first]);
-                if(res != 0)
-                {
-                    framework_function_fail(pthread_mutex_lock_fail);
-                }
+
 //                k2Base* newKey = it.second.back().first;
 //                v2Base* newVal = it.second.back().second;
                 bool is_key_exist = false;
@@ -363,19 +365,27 @@ void *shuffle(void*)
 
                 garbage_collector.push_back(it.second.back());
                 pthreadToContainer_Map[it.first].erase(pthreadToContainer_Map[it.first].begin() + it.second.size());
-
+                int res = pthread_mutex_unlock(&(mutex_map[it.first]));
+                if(res != 0)
+                {
+                    framework_function_fail(pthread_mutex_unlock_fail);
+                }
                 // decrement semaphore
                 int sem_res = sem_wait(&shuffle_sem);
                 if(sem_res != 0)
                 {
                     framework_function_fail(sem_wait_fail);
                 }
-
-                int res = pthread_mutex_unlock(&mutex_map[it.first]);
+                res = pthread_mutex_lock(&(mutex_map[it.first]));
                 if(res != 0)
                 {
-                    framework_function_fail(pthread_mutex_unlock_fail);
+                    framework_function_fail(pthread_mutex_lock_fail);
                 }
+            }
+            int res = pthread_mutex_unlock(&(mutex_map[it.first]));
+            if(res != 0)
+            {
+                framework_function_fail(pthread_mutex_unlock_fail);
             }
         }
         //Gets semaphore value
@@ -520,6 +530,7 @@ void *ExecReduceFunc(void*)
         //if there is nothing left to read then thread exit
         if(next_pair_to_read >= shuffledVector.size())
         {
+            //unlocking mutex
             res  = pthread_mutex_unlock(&nextValue_mutex);
             if(res != 0)
             {
@@ -549,8 +560,7 @@ void *ExecReduceFunc(void*)
         for (unsign_l i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to reduce
-            mapReduceBase->Reduce(shuffledVector[i].first, shuffledVector[i]
-                    .second);
+            mapReduceBase->Reduce(shuffledVector[i].first, shuffledVector[i].second);
         }
     }
     log_file_message(finish_threadTypeReduce + get_cur_time()+"\n");
@@ -660,10 +670,9 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(time_for_Map_and_shuffle + to_string(total_time)
                      + time_format);
 
-
     //------Fifth REDUCE-----
     //start TIME
-    total_time = 0; // Map&Shuffle measure time
+    // Map&Shuffle measure time
     if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
     {
         framework_function_fail(gettimeofday_fail);
@@ -720,9 +729,9 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(finish_MapReduceFramwork);
     closing_log_file();
 
+
     //------And last SORT and return output-------
     std::sort(output_vector.begin(), output_vector.end(), sort_pred());
-
     if(deleteV2K2)
     {
         for (unsign_i l = 0; l < shuffledVector.size(); ++l)

@@ -94,6 +94,7 @@ public:
                         new GridPoint(((RowMaxVal*) (*it))->getRowNum(), col);
                 GridPointVal* pointVal = new GridPointVal(v);
                 Emit3(point, pointVal);
+
             }
         }
 

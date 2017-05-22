@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
-#include "MapReduceClient.h"
-#include "MapReduceFramework.h"
+#include "../MapReduceClient.h"
+#include "../MapReduceFramework.h"
 
 pthread_mutex_t k2_mutex = PTHREAD_MUTEX_INITIALIZER;
 
