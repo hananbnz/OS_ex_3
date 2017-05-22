@@ -313,7 +313,7 @@ void *shuffle(void*)
     {
         framework_function_fail(pthread_mutex_lock_fail);
     }
-    while(sem_val > 0 ||  !finishedMapThreads)
+    while(sem_val > 0 || !finishedMapThreads)
     {
         res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
         if(res != 0)
@@ -380,7 +380,7 @@ void *shuffle(void*)
         }
     }
     res  = pthread_mutex_lock(&nextValue_mutex);
-    if(res != 0)
+    if(res !=0)
     {
         framework_function_fail(pthread_mutex_lock_fail);
     }
