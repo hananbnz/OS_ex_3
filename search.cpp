@@ -247,15 +247,16 @@ int main(int argc, char * argv[])
 //        printf("num of app %d \n", number_of_appearance);
             for (int j = 0; j < number_of_appearance; ++j) {
                 printf("%s", name->get_file_name().c_str());
-                fflush(stdout);
+//                fflush(stdout);
                 if((j < number_of_appearance-1 ) || (i < search_output_vector
                                                                  .size()-1))
                 {
                     printf(" ");
-                    fflush(stdout);
+//                    fflush(stdout);
                 }
             }
         }
+//        fflush(stdout);
         release_resources();
 
     //TODO release k2,v2 resources
