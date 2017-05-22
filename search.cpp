@@ -134,8 +134,9 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
                 Emit2(k2, v2);
             }
         }
+        closedir(dir);
     }
-    closedir(dir);
+
 }
 
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
@@ -248,7 +249,10 @@ int main(int argc, char * argv[])
                 printf("%s ", name->get_file_name().c_str());
                 fflush(stdout);
             }
+
         }
+        printf("\n");
+        fflush(stdout);
         release_resources();
 
     //TODO release k2,v2 resources

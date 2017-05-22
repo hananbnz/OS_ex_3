@@ -221,7 +221,17 @@ void log_file_message(string txt)
 
 void closing_log_file()
 {
+    res  = pthread_mutex_lock(&logFile_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_lock_fail);
+    }
     outputFile.close();
+    res  = pthread_mutex_unlock(&logFile_mutex);
+    if(res != 0)
+    {
+        framework_function_fail(pthread_mutex_unlock_fail);
+    }
 }
 
 
@@ -430,7 +440,7 @@ void *ExecMapFunc(void* mapReduce)
 }
 
 
-void *ExecReduceFunc(void* mapReduce)
+void *ExecReduceFunc(void*)
 {
     //locking mutex
     res  = pthread_mutex_lock(&pthreadToContainer_Reduce_mutex);
@@ -520,7 +530,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     for (int i = 0; i < multiThreadLevel; ++i)
     {
         pthread_t newExecMap;
-        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
+        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, 0);
         if(thread_res != 0)
         {
             framework_function_fail(pthread_create_fail);
@@ -544,7 +554,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     // -----Forth SHUFFLE-----
     pthread_t shuffleThread;
-    int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
+    int thread_res = pthread_create(&shuffleThread, NULL, shuffle, 0);
     log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
     if(thread_res != 0)
     {
@@ -594,7 +604,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     for (int i = 0; i < multiThreadLevel; ++i)
     {
         pthread_t ExecReduce;
-        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
+        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,0);
         if(reduce_res != 0)
         {
             framework_function_fail(pthread_create_fail);
