@@ -189,11 +189,11 @@ void framework_function_fail(string text)
 
 void create_log_file()
 {
-    int res  = pthread_mutex_lock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+//    int res  = pthread_mutex_lock(&logFile_mutex);
+//    if(res != 0)
+//    {
+//        framework_function_fail(pthread_mutex_lock_fail);
+//    }
     char* r_buf;
     r_buf = getcwd(buf, LOG_BUF_SIZE);
     string file_to_open= (string)r_buf + Log_file_name;
@@ -202,11 +202,11 @@ void create_log_file()
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
     }
-    res  = pthread_mutex_unlock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+//    res  = pthread_mutex_unlock(&logFile_mutex);
+//    if(res != 0)
+//    {
+//        framework_function_fail(pthread_mutex_unlock_fail);
+//    }
 }
 
 void log_file_message(string txt)
@@ -294,8 +294,7 @@ shuffled_item create_new_item(v2Base* newVal, k2Base* newKey)
 {
     V2_VEC new_vec;
     new_vec.push_back(newVal);
-    shuffled_item new_item = pair<k2Base*, V2_VEC>(newKey,
-                                                   new_vec);
+    shuffled_item new_item = pair<k2Base*, V2_VEC>(newKey, new_vec);
     return new_item;
 }
 
@@ -318,7 +317,7 @@ void *shuffle(void*)
         res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
         if(res != 0)
         {
-            framework_function_fail(pthread_mutex_unlock_fail);
+            framework_function_fail(pthread_mutex_lock_fail);
         }
         for (auto &it :pthreadToContainer_Map)
         {
@@ -434,11 +433,11 @@ void *ExecMapFunc(void*)
     // in the func will send one-by-one pairs to map
     while (true)
     {
-        int res  = pthread_mutex_lock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
+//        int res  = pthread_mutex_lock(&nextValue_mutex);
+//        if(res != 0)
+//        {
+//            framework_function_fail(pthread_mutex_lock_fail);
+//        }
         //if there is nothing left to read then thread exit
         if(next_pair_to_read >= input_vec.size())
         {
@@ -446,11 +445,11 @@ void *ExecMapFunc(void*)
         }
 
 //        //locking next value mutex
-//        res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
+        res  = pthread_mutex_lock(&nextValue_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_lock_fail);
+        }
 
         //get chunk size using outer function
         unsign_l current_chunk_size = set_chunk_size(input_vec.size());
@@ -491,23 +490,23 @@ void *ExecReduceFunc(void*)
     }
     while (true)
     {
-        int res  = pthread_mutex_lock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
+//        int res  = pthread_mutex_lock(&nextValue_mutex);
+//        if(res != 0)
+//        {
+//            framework_function_fail(pthread_mutex_lock_fail);
+//        }
         //if there is nothing left to read then thread exit
         if(next_pair_to_read >= shuffledVector.size())
         {
             break;
         }
 
-//        //locking mutex
-//        res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
+        //locking mutex
+        res  = pthread_mutex_lock(&nextValue_mutex);
+        if(res != 0)
+        {
+            framework_function_fail(pthread_mutex_lock_fail);
+        }
 
         unsign_l current_chunk_size = set_chunk_size(shuffledVector.size());
         unsign_l begin = next_pair_to_read;

@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -Wall
-STD = -std=c++11 -pthread
+STD = -std=c++11 -pthread -g
 FLAG = -c
 FLAG2 = -o
 FILES = MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
