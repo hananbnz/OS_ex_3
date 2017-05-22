@@ -1,0 +1,39 @@
+reuveny, hananbnz
+Reuven Yimmer (301789947), Hanan Benzion (026606608)
+EX: 3
+
+FILES:
+MapReduceFramework.cpp - A Map-Reduce Framework that runs the Map and Reduce
+                         functions of a user in a multi-threaded environment.
+Search.cpp - A search word program(client of the MapReduceFramework)
+README(this file)
+Makefile - Running make generate the library MapReduceFramework.a and
+           an executable file named Search
+REMARKS:
+None.
+
+ANSWERS:
+##########################################################################
+Q1:
+
+
+
+
+
+
+
+Q2:
+
+
+
+
+
+
+
+Q3:
+
+Q4:
+
+Q5:
+
+Q6:

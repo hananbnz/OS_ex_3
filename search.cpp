@@ -1,3 +1,6 @@
+
+// ------------------------------- Includes ----------------------------------
+
 #include <cstdio>
 #include <iostream>
 #include <stdlib.h>
@@ -8,11 +11,43 @@
 
 using namespace std;
 
+// -------------------------------- Constants ---------------------------------
+
+/**
+ * VALID_ARG_NUM 2
+ * @brief  A const value representing function success
+ */
+#define VALID_ARG_NUM 2
+
+/**
+ * MULTI_THREADS_LEVEL 10
+ * @brief  A const value representing function success
+ */
+#define MULTI_THREADS_LEVEL 10
+
+/**
+ * FUNC_SUCCESS 0
+ * @brief  A const value representing function success
+ */
+#define FUNC_SUCCESS 0
+
+string thread_init_fail = "Usage: <substring to search> "
+        "<folders, separated by space>";
 
 
 
-/////////////////////////////CLASSES DEFINITIONS///////////////////////////////
+// ----------------------------- Global variables ---------------------------
 
+
+IN_ITEMS_VEC mapInput;
+
+OUT_ITEMS_VEC search_output_vector;
+
+bool frameworkDeleteResources = true;
+
+
+
+// ----------------------------CLASSES DEFINITIONS ---------------------------
 
 
 class FileName : public k1Base, public k2Base, public k3Base
@@ -78,7 +113,7 @@ public:
     void Reduce(const k2Base *const key, const V2_VEC &vals) const;
 };
 
-///////////////////////// class functions implementation //////////////////////
+// ------------------- class functions implementation-------------------------
 
 /**
  * The iperator < implementation for the k1Base
@@ -110,7 +145,11 @@ bool FileName::operator<(const k3Base &other) const
 }
 
 
-
+/**
+ *
+ * @param key
+ * @param val
+ */
 void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) const
 {
     FileName* file_key = (FileName*)(key);
@@ -135,6 +174,11 @@ void MapReduceSearch::Map(const k1Base *const key, const v1Base *const val) cons
 
 }
 
+/**
+ *
+ * @param key
+ * @param vals
+ */
 void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 {
 
@@ -146,28 +190,11 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 }
 
 
-//
+
 ///////////////////////////// THE SEARCH PROGRAM ///////////////////////////////
 
 
-
-
-////////////////////////////////// Constants ///////////////////////////////////
-
-#define VALID_ARG_NUM 2
-
-#define MULTI_THREADS_LEVEL 10
-
-string thread_init_fail = "Usage: <substring to search> "
-        "<folders, separated by space>";
-
-IN_ITEMS_VEC mapInput;
-OUT_ITEMS_VEC search_output_vector;
-bool frameworkDeleteResources = true;
-//int multiThreadLevel = 4;
-
-
-////////////////////////////////// Functions ///////////////////////////////////
+// -------------------------------- Functions ----------------------------------
 
 /**
  *
@@ -190,7 +217,9 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
     return input_items_vec;
 }
 
-
+/**
+ *
+ */
 void release_resources()
 {
     delete mapInput[0].second;
@@ -210,9 +239,7 @@ void release_resources()
 }
 
 
-/////////////////////////////// Main Function  /////////////////////////////////
-
-
+// -------------------------------- Main Function -----------------------------
 
 /**
  * 
@@ -228,58 +255,38 @@ int main(int argc, char * argv[])
         exit(1);
 
     }
-//    IN_ITEMS_VEC mapInput;
-//    for (int k = 0; k < 20; ++k)
-//    {
-
-        mapInput = prepareToMap(argv, argc);
-        MapReduceSearch m;
-//        OUT_ITEMS_VEC search_output_vector;
-        search_output_vector = RunMapReduceFramework(m, mapInput,
-                                                     MULTI_THREADS_LEVEL,
-                                                     frameworkDeleteResources);
+    if(argc == VALID_ARG_NUM)
+    {
+        return FUNC_SUCCESS;
+    }
+    mapInput = prepareToMap(argv, argc);
+    MapReduceSearch m;
+    search_output_vector = RunMapReduceFramework(m, mapInput,
+                                                 MULTI_THREADS_LEVEL,
+                                                 frameworkDeleteResources);
         // values
-        for (unsigned int i = 0; i < search_output_vector.size(); ++i) {
-            const FileName *name = (const FileName *)(search_output_vector[i].first);
-            const WordToSearch *num = (const WordToSearch *)(search_output_vector[i].second);
-            int number_of_appearance = stoi(num->get_word());
-//        printf("num of app %d \n", number_of_appearance);
-            for (int j = 0; j < number_of_appearance; ++j) {
-                cout << name->get_file_name().c_str();
-                if((j < number_of_appearance-1 ) || (i < search_output_vector
+    for (unsigned int i = 0; i < search_output_vector.size(); ++i) {
+        const FileName *name = (const FileName *)
+                (search_output_vector[i].first);
+        const WordToSearch *num = (const WordToSearch *)
+                (search_output_vector[i].second);
+        int number_of_appearance = stoi(num->get_word());
+        for (int j = 0; j < number_of_appearance; ++j)
+        {
+            cout << name->get_file_name().c_str();
+            if((j < number_of_appearance-1 ) || (i < search_output_vector
                                                                  .size()-1))
-                {
-                    cout << " ";
-                }
+            {
+                cout << " ";
             }
         }
-    cout<< "ended main"<<endl;
+    }
     release_resources();
-    return 0;
+    mapInput.clear();
+    search_output_vector.clear();
+    return FUNC_SUCCESS;
 }
 
 //os os2015/exercise myFolder
-
-
-//..................................TESTS .................................  //
-
-//
-//    DIR *dir = opendir("/cs/usr/hananbnz/safe/OS/ex_3/os2015/exercise");
-//    if(dir)
-//    {
-//        struct dirent *ent;
-//        while((ent = readdir(dir)) != NULL)
-//        {
-//            string s1 = (string)ent->d_name;
-//            if (s1.find("os") != std::string::npos)
-//            {
-//                std::cout << s1 <<" found!" << '\n';
-//            }
-//        }
-//    }
-//    printf("search running....\n");
-//    printf("search for 'os' in os2015/exercise blabla myFolder\n");
-//    printf("found 'osTargil' 'sos' 'sos'\n");
-//    printf("search finished...\n");
 
 
