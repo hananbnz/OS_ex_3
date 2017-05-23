@@ -108,10 +108,6 @@ pthread_mutex_t emit3_insert = PTHREAD_MUTEX_INITIALIZER;
 
 sem_t shuffle_sem;
 
-//lock/unlock result varaiables
-//int res;
-
-
 
 // -------------------------- SHARED DATA STRUCTURES  ------------------------
 
@@ -119,35 +115,24 @@ typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
 typedef std::pair<k2Base*, V2_VEC> shuffled_item;
 
-vector<mapped_item> garbage_collector;
+map<pthread_t, pthread_mutex_t> mutex_map;
 
 vector<pthread_t> multiThreadLevel_threads_Map;
+
 vector<pthread_t> multiThreadLevel_threads_Reduce;
 
-//vector<pair<k1Base*, v1Base*>> IN_ITEMS_VEC;
 IN_ITEMS_VEC input_vec;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Map;
 
 map<pthread_t, mapped_vector> pthreadToContainer_Reduce;
 
-map<pthread_t, pthread_mutex_t> mutex_map;
-
-//vector <pair<k2Base*, vector<v2Base*>>> shuffled_item;
 vector<shuffled_item> shuffledVector;
 
 OUT_ITEMS_VEC output_vector;
 
 MapReduceBase* mapReduceBase;
 
-struct sort_pred
-{
-    bool operator()(std::pair<k3Base*, v3Base*> &left,
-                    std::pair<k3Base*, v3Base*> &right)
-    {
-        return *(left.first) < *(right.first);
-    }
-};
 
 // ----------------------------- Error Messages  -----------------------------
 
@@ -159,8 +144,6 @@ string sem_post_fail = "sem_post";
 string sem_getvalue_fail = "sem_getvalue";
 string sem_wait_fail = "sem_wait";
 string sem_destroy_fail = "sem_destroy";
-string new_fail = "new";
-string read_fail = "read";
 string open_fail = "open";
 string gettimeofday_fail = "gettimeofday";
 string sem_init_fail = "sem_init";
@@ -185,6 +168,11 @@ string Log_file_name = ".MapReduceFramework.log";
 
 // ---------------------- Framework Error FUNCTIONS  ---------------------------
 
+/**
+ * This function gets a text represents fail accoured  then prints it
+ * and exits with value of 1
+ * @param text a string
+ */
 void framework_function_fail(string text)
 {
     fprintf(stderr, "MapReduceFramework Failure: %s failed\n", text.c_str());
@@ -193,67 +181,60 @@ void framework_function_fail(string text)
 
 // --------------------------  LOG FILE FUNCTIONS  ---------------------------
 
+/**
+ * this function creates a log file for the framework
+ */
 void create_log_file()
 {
-
     char* r_buf;
     r_buf = getcwd(buf, LOG_BUF_SIZE);
     string file_to_open= (string)r_buf + Log_file_name;
     outputFile.open(file_to_open);
-    if(!outputFile.is_open())
-    {
-        fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
-    }
+    if(!outputFile.is_open()) framework_function_fail(open_fail);
 }
 
+/**
+ * This function gets a string(text) and writes it to the log file.
+ * @param txt A string (represents input to log file)
+ */
 void log_file_message(string txt)
 {
     int res  = pthread_mutex_lock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
     outputFile << txt << endl;
     res  = pthread_mutex_unlock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_unlock_fail);
+
 }
 
+/**
+ * This function closes log file after framework finished working
+ */
 void closing_log_file()
 {
     int res  = pthread_mutex_lock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
     outputFile.close();
     res  = pthread_mutex_unlock(&logFile_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_unlock_fail);
 }
 
-
+/**
+ * This function returns current time
+ * @return a string(represents current time in a given format)
+ */
 string get_cur_time()
 {
+    //lock mutex
     int res  = pthread_mutex_lock(&check_time_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
     auto t = time(nullptr);
     auto tm = *std::localtime(&t);
-
     stringstream ss;
     ss << put_time(&tm, "[%d.%m.%Y %H:%M:%S]");
+    //unlock mutex
     res  = pthread_mutex_unlock(&check_time_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_unlock_fail);
     return ss.str();
 }
 /**
@@ -264,8 +245,19 @@ struct timeval start_time, end_time;
 
 
 
-
 // ------------------------------ PROGRAM FUNCTIONS --------------------------
+
+/*
+ * sorting <k3,v3> struct
+ */
+struct sort_pred
+{
+    bool operator()(std::pair<k3Base*, v3Base*> &left,
+                    std::pair<k3Base*, v3Base*> &right)
+    {
+        return *(left.first) < *(right.first);
+    }
+};
 
 /**
  * This function will release all the mutex resources that were in the
@@ -294,7 +286,7 @@ void release_mutex_resources()
 }
 
 /**
- *
+ * This function releases all v2/k2 resources
  */
 void release_V2_K2_resources()
 {
@@ -313,6 +305,13 @@ void release_V2_K2_resources()
     }
 }
 
+/**
+ * This function gets a v2Base*(newVal), k2Base*(newKey) creates new
+ * pair<k2Base*, V2_VEC> item and returns it.
+ * @param newVal a v2Base pointer
+ * @param newKey a k2Base pointer
+ * @return a pair<k2Base*, V2_VEC> (represents new item)
+ */
 shuffled_item create_new_item(v2Base* newVal, k2Base* newKey)
 {
     V2_VEC new_vec;
@@ -352,6 +351,7 @@ unsign_l set_chunk_size(unsign_l vec_size)
 //    next_pair_to_read += current_chunk_size;
 //    return begin,end;
 //}
+
 
 void re_initialize_next_pair_to_read()
 {
@@ -544,10 +544,10 @@ void *ExecReduceFunc(void*)
 
 /////////////////// The MapReduceFramework Functions //////////////////////////
 
-
 /**
- *
- * @param multiThreadLevel
+ * This function gets multiThreadLevel integer ,creates ExecMap threads
+ * accordingly and runs them.
+ * @param multiThreadLevel An integer(represents multiThreadLevel value)
  */
 void map_threads_creation_and_run(int multiThreadLevel)
 {
@@ -558,13 +558,20 @@ void map_threads_creation_and_run(int multiThreadLevel)
         int thread_res = pthread_create(&ExecMap, NULL, ExecMapFunc, NULL);
         if(thread_res != 0) framework_function_fail(pthread_create_fail);
         pthread_mutex_t container_mutex = PTHREAD_MUTEX_INITIALIZER;
+        //creates a thread container mutex
         mutex_map[ExecMap] = container_mutex;
         multiThreadLevel_threads_Map.push_back(ExecMap);
+        //adds thread to container
         pthreadToContainer_Map[ExecMap];
         log_file_message(create_threadTypeMap + get_cur_time()+"\n");
     }
 }
 
+/**
+ * This function gets multiThreadLevel integer ,creates ReduceMap threads
+ * accordingly and runs them.
+ * @param multiThreadLevel An integer(represents multiThreadLevel value)
+ */
 void reduce_threads_creation_and_run(int multiThreadLevel)
 {
     for (int i = 0; i < multiThreadLevel; ++i)
@@ -573,6 +580,7 @@ void reduce_threads_creation_and_run(int multiThreadLevel)
         int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
         if(reduce_res != 0) framework_function_fail(pthread_create_fail);
         multiThreadLevel_threads_Reduce.push_back(ExecReduce);
+        //adds thread to container
         pthreadToContainer_Reduce[ExecReduce];
         log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
     }
