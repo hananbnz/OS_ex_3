@@ -101,6 +101,7 @@ pthread_mutex_t finished_Map_Threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t check_time_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t emit3_insert = PTHREAD_MUTEX_INITIALIZER;
+
 sem_t shuffle_sem;
 
 //lock/unlock result varaiables
@@ -194,11 +195,7 @@ void framework_function_fail(string text)
 
 void create_log_file()
 {
-//    int res  = pthread_mutex_lock(&logFile_mutex);
-//    if(res != 0)
-//    {
-//        framework_function_fail(pthread_mutex_lock_fail);
-//    }
+
     char* r_buf;
     r_buf = getcwd(buf, LOG_BUF_SIZE);
     string file_to_open= (string)r_buf + Log_file_name;
@@ -207,11 +204,6 @@ void create_log_file()
     {
         fprintf(stderr, "system error: %s\n", "ERROR opening Log File");
     }
-//    res  = pthread_mutex_unlock(&logFile_mutex);
-//    if(res != 0)
-//    {
-//        framework_function_fail(pthread_mutex_unlock_fail);
-//    }
 }
 
 void log_file_message(string txt)
@@ -275,35 +267,31 @@ struct timeval start_time, end_time;
 
 // ------------------------------ PROGRAM FUNCTIONS --------------------------
 
-///**
-// * This function gets a key pointer(K2Base*) and a pthread id and removes the
-// * matching key pair from the pthread container
-// * @param newKey K2Base pointer
-// * @param id pthread_t represents the thread which from his container the
-// * function removes the pair.
-// */
-//void remove_pair(k2Base* newKey, pthread_t id)
-//{
-//    for (int j = 0; j < pthreadToContainer_Map[id].size(); ++j)
-//    {
-//        if(!(*newKey < *(pthreadToContainer_Map[id][j].first)) &&
-//                !(*(pthreadToContainer_Map[id][j].first) < *newKey))
-//        {
-//            pair<k2Base*, v2Base*> pair_to_delete =
-//                    pthreadToContainer_Map[id][j];
-//            pthreadToContainer_Map[id].erase(pthreadToContainer_Map[id].begin()
-//                                             + j);
-//            if(deleteV2K2)
-//            {
-////                pair_to_delete.first = nullptr;
-////                pair_to_delete.second = nullptr;
-////                delete pair_to_delete.first;
-////                delete pair_to_delete.second;
-//            }
-//            break;
-//        }
-//    }
-//}
+/**
+ * This function will release all the mutex resources that were in the
+ * MapReduceFrameWork
+ */
+void release_mutex_resources()
+{
+    pthread_mutex_destroy(&pthreadToContainer_Map_mutex);
+
+    pthread_mutex_destroy(&pthreadToContainer_Reduce_mutex);
+
+    pthread_mutex_destroy(&nextValue_mutex);
+
+    pthread_mutex_destroy(&logFile_mutex);
+
+    pthread_mutex_destroy(&check_time_mutex);
+
+    pthread_mutex_destroy(&finished_Map_Threads_mutex);
+
+    pthread_mutex_destroy(&emit3_insert);
+
+    for (auto &map: mutex_map)
+    {
+        pthread_mutex_destroy(&map.second);
+    }
+}
 
 shuffled_item create_new_item(v2Base* newVal, k2Base* newKey)
 {
@@ -540,14 +528,6 @@ void *ExecReduceFunc(void*)
             }
             break;
         }
-
-        //locking mutex
-//        res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
-
         unsign_l current_chunk_size = set_chunk_size(shuffledVector.size());
         unsign_l begin = next_pair_to_read;
         unsign_l end = next_pair_to_read + current_chunk_size;
@@ -751,23 +731,23 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
         }
     }
     //kill mutex
-
-    pthread_mutex_destroy(&pthreadToContainer_Map_mutex);
-
-    pthread_mutex_destroy(&pthreadToContainer_Reduce_mutex);
-
-    pthread_mutex_destroy(&nextValue_mutex);
-
-    pthread_mutex_destroy(&logFile_mutex);
-
-    pthread_mutex_destroy(&check_time_mutex);
-
-    pthread_mutex_destroy(&finished_Map_Threads_mutex);
-
-    for (auto &map: mutex_map)
-    {
-        pthread_mutex_destroy(&map.second);
-    }
+    release_mutex_resources();
+//    pthread_mutex_destroy(&pthreadToContainer_Map_mutex);
+//
+//    pthread_mutex_destroy(&pthreadToContainer_Reduce_mutex);
+//
+//    pthread_mutex_destroy(&nextValue_mutex);
+//
+//    pthread_mutex_destroy(&logFile_mutex);
+//
+//    pthread_mutex_destroy(&check_time_mutex);
+//
+//    pthread_mutex_destroy(&finished_Map_Threads_mutex);
+//
+//    for (auto &map: mutex_map)
+//    {
+//        pthread_mutex_destroy(&map.second);
+//    }
     return output_vector;
 
 }
