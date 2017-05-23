@@ -4,7 +4,7 @@ cd "$scriptdir"
 
 echo -n "Test 496 stress... "
 
-for i in {1..50}
+for i in {1..100}
 do
 	./run > /dev/null
 	RUN_STATUS=$?

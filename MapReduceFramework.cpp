@@ -58,7 +58,8 @@ typedef unsigned int unsign_i;
  */
 #define FUNC_SUCCESS 0
 
-
+typedef unsigned long unsign_l;
+typedef unsigned int unsign_i;
 
 // ----------------------------- Global variables ---------------------------
 
@@ -107,7 +108,10 @@ pthread_mutex_t emit3_insert = PTHREAD_MUTEX_INITIALIZER;
 
 sem_t shuffle_sem;
 
-int sem_val;
+//lock/unlock result varaiables
+//int res;
+
+
 
 // -------------------------- SHARED DATA STRUCTURES  ------------------------
 
@@ -317,120 +321,6 @@ shuffled_item create_new_item(v2Base* newVal, k2Base* newKey)
     return new_item;
 }
 
-void *shuffle(void*)
-{
-    // Gets semaphore value
-    int res = sem_getvalue(&shuffle_sem, &sem_val);
-    if (res != 0)
-    {
-        framework_function_fail(sem_getvalue_fail);
-    }
-    // while semaphore value>0 and threads left shuffle keeps running
-    res  = pthread_mutex_lock(&finished_Map_Threads_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
-    while(sem_val > 0 || !finishedMapThreads)
-    {
-        res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
-        for (auto &it :pthreadToContainer_Map)
-        {
-            res = pthread_mutex_lock(&(mutex_map[it.first]));
-            if(res != 0)
-            {
-                framework_function_fail(pthread_mutex_lock_fail);
-            }
-            while(!(it.second.empty())) //while container not empty
-            {
-
-//                k2Base* newKey = it.second.back().first;
-//                v2Base* newVal = it.second.back().second;
-                bool is_key_exist = false;
-                // search for the key in container
-
-                for (unsign_i i = 0; i < shuffledVector.size(); ++i)
-                {
-                    if(!(*it.second.back().first < *(shuffledVector[i].first)) &&
-                            !(*(shuffledVector[i].first) < *it.second.back().first))
-                    {
-                        shuffledVector[i].second.push_back(it.second.back().second);
-                        if(deleteV2K2) delete it.second.back().first;
-                        is_key_exist = true;
-                        break;
-                    }
-                }
-                // checks if key exists and if not found creates a new key
-                if(!is_key_exist) shuffledVector.push_back
-                            (create_new_item(it.second.back().second, it.second.back().first));
-                // remove pair from vector
-
-                garbage_collector.push_back(it.second.back());
-                pthreadToContainer_Map[it.first].erase(pthreadToContainer_Map[it.first].begin() + it.second.size());
-                int res = pthread_mutex_unlock(&(mutex_map[it.first]));
-                if(res != 0)
-                {
-                    framework_function_fail(pthread_mutex_unlock_fail);
-                }
-                // decrement semaphore
-                int sem_res = sem_wait(&shuffle_sem);
-                if(sem_res != 0)
-                {
-                    framework_function_fail(sem_wait_fail);
-                }
-                res = pthread_mutex_lock(&(mutex_map[it.first]));
-                if(res != 0)
-                {
-                    framework_function_fail(pthread_mutex_lock_fail);
-                }
-            }
-            int res = pthread_mutex_unlock(&(mutex_map[it.first]));
-            if(res != 0)
-            {
-                framework_function_fail(pthread_mutex_unlock_fail);
-            }
-        }
-        //Gets semaphore value
-        int res = sem_getvalue(&shuffle_sem, &sem_val);
-        if (res != 0)
-        {
-            framework_function_fail(sem_getvalue_fail);
-        }
-        res  = pthread_mutex_lock(&finished_Map_Threads_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
-    }
-    res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
-    res  = pthread_mutex_lock(&nextValue_mutex);
-    if(res !=0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
-    next_pair_to_read = 0;
-    res  = pthread_mutex_unlock(&nextValue_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
-    res = sem_destroy(&shuffle_sem);
-    if(res != 0)
-    {
-        framework_function_fail(sem_destroy_fail);
-    }
-    log_file_message(finish_threadTypeShuffle + get_cur_time()+"\n");
-    pthread_exit(NULL);
-}
-
 /**
  * This function gets  a vector size and according to next_pair_to_read and
  * CHUNK_SIZE values calculates and returns the current chunk size.
@@ -447,60 +337,153 @@ unsign_l set_chunk_size(unsign_l vec_size)
     return current_chunk_size;
 }
 
+/**
+ * This function implement the selection of the chunk the threads should work
+ * on during the Map/Reduce operation
+ * @param vec_size - the size of the unput vector
+ * @return the begin and end indeces of the chunk the thread should work on
+ */
+//unsign_l selecting_chunk(unsign_l vec_size)         // TODO check if works
+//{
+//    // selecting a chunk of pairs to work on
+//    unsign_l current_chunk_size = set_chunk_size(vec_size);
+//    unsign_l begin = next_pair_to_read;
+//    unsign_l end = next_pair_to_read + current_chunk_size;
+//    next_pair_to_read += current_chunk_size;
+//    return begin,end;
+//}
 
+void re_initialize_next_pair_to_read()
+{
+    // change the next pair to read value
+    int res  = pthread_mutex_lock(&nextValue_mutex);
+    if(res !=0)framework_function_fail(pthread_mutex_lock_fail);
+    next_pair_to_read = 0;
+    res  = pthread_mutex_unlock(&nextValue_mutex);
+    if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
+}
+
+///////////////// The different Threads Functions /////////////////////////////
+/**
+ * In this Function the shuffle thread will run the shuffle operation in the
+ * MapReduceFramework
+ * @return nothing
+ */
+void *shuffle(void*)
+{
+    int sem_val;
+    // Gets semaphore value
+    int res = sem_getvalue(&shuffle_sem, &sem_val);
+    if (res != 0)
+    {
+        framework_function_fail(sem_getvalue_fail);
+    }
+    // while semaphore value>0 and threads left shuffle keeps running
+    res  = pthread_mutex_lock(&finished_Map_Threads_mutex);
+    if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+    // while semaphore value > 0 and Map threads left, shuffle keeps running
+    while(sem_val > 0 || !finishedMapThreads)
+    {
+        // unlock finished_Map_Threads_mutex
+        res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
+        if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+        for (auto &it :pthreadToContainer_Map)
+        {
+            res = pthread_mutex_lock(&(mutex_map[it.first]));
+            if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+            while(!(it.second.empty())) //while container not empty
+            {
+                bool is_key_exist = false;
+                // check if the key is in the container
+                for (unsign_i i = 0; i < shuffledVector.size(); ++i)
+                {
+                    if(!(*it.second.back().first < *(shuffledVector[i].first)) &&
+                        !(*(shuffledVector[i].first) < *it.second.back().first))
+                    {
+                        shuffledVector[i].second.push_back(it.second.back().second);
+                        if(deleteV2K2) delete it.second.back().first;
+                        is_key_exist = true;
+                        break;
+                    }
+                }
+                // If key wasn't already in container, creates a new key
+                if(!is_key_exist) shuffledVector.push_back
+                            (create_new_item(it.second.back().second, it
+                                    .second.back().first));
+
+                // remove pair from vector
+                pthreadToContainer_Map[it.first].erase
+                        (pthreadToContainer_Map[it.first].begin() + it.second.size());
+
+
+                int res = pthread_mutex_unlock(&(mutex_map[it.first]));
+                if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
+
+                // decrement semaphore
+                int sem_res = sem_wait(&shuffle_sem);
+                if(sem_res != 0)framework_function_fail(sem_wait_fail);
+                res = pthread_mutex_lock(&(mutex_map[it.first]));
+                if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+            }
+            int res = pthread_mutex_unlock(&(mutex_map[it.first]));
+            if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
+        }
+        //Gets semaphore value
+        int res = sem_getvalue(&shuffle_sem, &sem_val);
+        if (res != 0)framework_function_fail(sem_getvalue_fail);
+        // lock finished_Map_Threads_mutex for while loop
+        res  = pthread_mutex_lock(&finished_Map_Threads_mutex);
+        if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+    }
+    // unlock finished_Map_Threads_mutex
+    res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
+    if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+    // change the next pair to read value
+    re_initialize_next_pair_to_read();
+
+    // destroy the shuffle_sem semaphore
+    res = sem_destroy(&shuffle_sem);
+    if(res != 0)framework_function_fail(sem_destroy_fail);
+    log_file_message(finish_threadTypeShuffle + get_cur_time()+"\n");
+    pthread_exit(NULL);
+}
+
+
+/**
+ * In this Function the ExecMap threads will run the Map operation in the
+ * MapReduceFramework
+ * @return nothing
+ */
 void *ExecMapFunc(void*)
 {
-    //locking mutex
-    int res  = pthread_mutex_lock(&pthreadToContainer_Map_mutex);////TODO change
-/// to pthreadToContainer_mutex
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
-    //unlocking mutex
+    //locking // to pthreadToContainer_mutex
+    int res  = pthread_mutex_lock(&pthreadToContainer_Map_mutex);
+    if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+
+    //unlocking pthreadToContainer_Map_mutex
     res  = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
-    // in the func will send one-by-one pairs to map
+    if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
     while (true)
     {
+        // locking nextValue_mutex
         int res  = pthread_mutex_lock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
+        if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
         //if there is nothing left to read then thread exit
         if(next_pair_to_read >= input_vec.size())
         {
+            // unlocking nextValue_mutex
             res  = pthread_mutex_unlock(&nextValue_mutex);
-            if(res != 0)
-            {
-                framework_function_fail(pthread_mutex_unlock_fail);
-            }
+            if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
             break;
         }
-
-//        //locking next value mutex
-//        res  = pthread_mutex_lock(&nextValue_mutex);
-//        if(res != 0)
-//        {
-//            framework_function_fail(pthread_mutex_lock_fail);
-//        }
-
-        //get chunk size using outer function
+        // selecting a chunk of pairs to work on
         unsign_l current_chunk_size = set_chunk_size(input_vec.size());
         unsign_l begin = next_pair_to_read;
         unsign_l end = next_pair_to_read + current_chunk_size;
         next_pair_to_read += current_chunk_size;
-
-        //unlocking next value mutex
+        //unlocking nextValue_mutex
         res  = pthread_mutex_unlock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_unlock_fail);
-        }
+        if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
         for (unsign_l i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to map
@@ -511,39 +494,36 @@ void *ExecMapFunc(void*)
     pthread_exit(NULL);
 }
 
-
+/**
+ * In this Function the ExecReduce threads will run the Reduce operation in the
+ * MapReduceFramework
+ * @return nothing
+ */
 void *ExecReduceFunc(void*)
 {
     //locking mutex
     int res  = pthread_mutex_lock(&pthreadToContainer_Reduce_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
+
     //unlocking mutex
     res  = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_unlock_fail);
+
     while (true)
     {
+        //locking mutex
         int res  = pthread_mutex_lock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_lock_fail);
-        }
+        if(res != 0)framework_function_fail(pthread_mutex_lock_fail);
+
         //if there is nothing left to read then thread exit
         if(next_pair_to_read >= shuffledVector.size())
         {
             //unlocking mutex
             res  = pthread_mutex_unlock(&nextValue_mutex);
-            if(res != 0)
-            {
-                framework_function_fail(pthread_mutex_unlock_fail);
-            }
+            if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
             break;
         }
+        // selecting a chunk of pairs to work on
         unsign_l current_chunk_size = set_chunk_size(shuffledVector.size());
         unsign_l begin = next_pair_to_read;
         unsign_l end = next_pair_to_read + current_chunk_size;
@@ -551,10 +531,7 @@ void *ExecReduceFunc(void*)
 
         //unlocking mutex
         res  = pthread_mutex_unlock(&nextValue_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_unlock_fail);
-        }
+        if(res != 0)framework_function_fail(pthread_mutex_unlock_fail);
         for (unsign_l i = begin; i < end; ++i)
         {
             // Reading the pairs in the input vector one-by-one to reduce
@@ -564,6 +541,8 @@ void *ExecReduceFunc(void*)
     log_file_message(finish_threadTypeReduce + get_cur_time()+"\n");
     pthread_exit(NULL);
 }
+
+/////////////////// The MapReduceFramework Functions //////////////////////////
 
 
 /**

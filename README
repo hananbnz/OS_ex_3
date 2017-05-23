@@ -126,22 +126,15 @@ You are required to compare the following attributes for each one of them:
 Q4:For a kernel level thread, a user-level thread and a process, what is shared
    for a parent and its child from the following:
 -------------------------------------------------------------------------------
-   a. Stack
-      kernel level thread - not shared
-      user-level thread - not shared
-      process - not shared
-
-   b. Heap
-      kernel level thread - shared
-      user-level thread - shared
-      process - not shared
-
-   c. Global variables
-      kernel level thread -  shared
-      user-level thread -  shared
-      process - not shared
-
-
+   +---------------------+------------+------------+------------------+
+   |                     |    Stack   |    Heap    | Global variables |
+   +---------------------+------------+------------+------------------+
+   | kernel level thread | not shared |   shared   |      shared      |
+   +---------------------+------------+------------+------------------+
+   |  user-level thread  | not shared |   shared   |      shared      |
+   +---------------------+------------+------------+------------------+
+   |       process       | not shared | not shared |    not shared    |
+   +---------------------+------------+------------+------------------+
 
 
 Q5:What is the difference between livelock and deadlock?
