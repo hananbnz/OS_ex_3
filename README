@@ -15,25 +15,158 @@ None.
 ANSWERS:
 ##########################################################################
 Q1:
+You are required to suggest an alternative design to implement the ExecMap
+threads and the Shuffle synchronization using a conditional variable (monitor)
+instead of semaphore
+------------------------------------------------------------------------------
+
+pseudo code that describes the flow:
+1.  define cond(pthread_cond_t variable), time(struct timespec variable)
+    and cond_mutex
+2.  In emit2 function:
+    Insert new pair
+    pthread_mutex_lock(&cond_mutex);
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&cond_mutex);
+
+3.  In shuffle function:
+    pthread_mutex_lock(&cond_mutex);
+    pthread_cond_timedwait(&cond, &cond_mutex, time);
+    Do_something()
+    pthread_mutex_unlock(&cond_mutex);
 
 
-
-
+The reason we have to use pthread_cond_timedwait and not pthread_cond_wait        **
+is to avoid a situation where is no more data recieved from emit2 and the
+shuffle waits for data infinitely. by using pthread_cond_timedwait we set the
+waiting time for data(for cond_signal) and after that time is passed the shuffle
+thread will continue.
 
 
 
 Q2:
+Assuming that a user wants to run the MapReduceFramework on his personal
+computer, which contains octa-cores (8 core) but without Hyper-threading support.
+What multiThreadLevel would you use to optimize the performance?
+--------------------------------------------------------------------------------
 
-
-
-
+A PC without Hyper-threading support can't run more then one task(thread)
+simultaneously on one core.To optimize the performance we will use
+multiThreadLevel  = 6. That way there will be 8 threads running simultaneously
+(The main thread + the ExecMap threads and shuffle thread we created) leaving
+no core on standby. This will optimize the performance because of the work
+division between all cores.
 
 
 
 Q3:
+Nira, Moti, Danny and Galit decided to implement the requirements of the
+MapReduceFramework as described in this exercise.
+However, each one of them implemented the concurrency slightly different:
+a. Nira used a single thread and a single process (single flow like “regular”
+program, no concurrency).
+b. Moti used Posix's library as required
+c. Danny used the user level threads that he implemented in exercise 2
+d. Galit didn’t understand the concept of threads, and therefore decided to use
+multi-processes rather than multi-threads (this means that instead of
+creating a thread, she created a process).
+You are required to compare the following attributes for each one of them:
+-------------------------------------------------------------------------------
 
-Q4:
+(1) Utilizing multi-cores
+    a. Nira doesn't utilize all the cores.
+    b. Moti can utilize all the cores by implementing kernel multi-level threads
+    c. Danny  user level threads implementation can't utilize a multi-core
+       machine because the os sees all the thread as one process.
+    d. Galit utilize all the cores.
 
-Q5:
+(2) The ability to create a sophisticated scheduler, based on internal data.       **
+    a. Nira can't implement a thread scheduler, because she's using only a
+       single thread and a single process.(but she can implement a sophisticated
+       workflow - "scheduler" alike between the functions)
+    b. Moti can't create a sophisticated scheduler, because the OS is in charge
+       of the scheduling - context switch.not allowing scheduling implementation
+    c. Danny can create a sophisticated scheduler, actually scheduling here
+       depends on Danny's implementation.
+    d. Galit can't implement a sophisticated scheduler, because process
+       scheduling is always under the responsibility of the OS.
 
-Q6:
+(3) Communication time (between different threads/processes)
+    a.  No communication time - because there is only one thread used.
+    b.  The shared sources are optimal. But, communication time depends on OS
+        switching between kernel-level threads that is more expensive than
+        user-level threads because it involves more steps than just saving
+        some registers.
+    c.  Switch between threads is cheaper because all of them are in the same
+        process and share the same resources.
+    d.  Very slow, because communication between processes is very expensive.
+
+(4) Ability to progress while a certain thread/process is blocked (e.g. is
+    waiting for disk)
+    a.  No , because there is only one thread/process used.
+    b.  Yes , the program  will be able to progress.because the OS will keep
+        running the other threads (by implementing according to the exercise
+        instructions the shuffle thread is an exception for this case)
+    c.  No ability, because one bloacked thread blocks the entire process.
+    d.  Yes, the program  will be able to progress.because one process blocked
+        doesn't affect others.
+(5) Overall speed
+    a.  Low speed, because Nira is using only one thread that way she's not
+        utilizing the multi-cores.
+    b.  Great speed, due to high concurrency
+    c.  The overall speed can be good depends on the following:
+            - the implementation of the scheduler
+            - threads not being blocked
+        The overall speed of Danny will be not as good as Moti's due to
+        not utilizing multi-cores.
+    d.  Low - Medium, due to longer communication time between process.
+
+
+
+Q4:For a kernel level thread, a user-level thread and a process, what is shared
+   for a parent and its child from the following:
+-------------------------------------------------------------------------------
+   a. Stack
+      kernel level thread - not shared
+      user-level thread - not shared
+      process - not shared
+
+   b. Heap
+      kernel level thread - shared
+      user-level thread - shared
+      process - not shared
+
+   c. Global variables
+      kernel level thread -  shared
+      user-level thread -  shared
+      process - not shared
+
+
+
+
+Q5:What is the difference between livelock and deadlock?
+   Give an example for each one of them.
+-------------------------------------------------------------------------------
+   Deadlock is a situation where one member in a group (of two thread or more)
+   is in a waiting state ,waiting for a different member that is also in a
+   waiting state that way each one of them is unable to change his state
+   indefinitely.
+
+   Livelock is a situation where two or more process continuously change their
+   states in response to changes in the other processes without doing any useful
+   work.
+
+   The difference between livelock and deadlock is that in deadlock
+   threads/processes waits for each other and can't progress while in livelock
+   the threads is responding to each other and therefore are not making actual
+   progress.
+
+   Example:
+   Two people trying to pass a narrow bridge from different sides.
+   If each one of them is waiting for the other one to move in order to pass -
+   it's a deadlock.
+   If each one of them moves to let the other one pass but in each move they are
+   blocking each other again - it's a livelock.
+
+
+

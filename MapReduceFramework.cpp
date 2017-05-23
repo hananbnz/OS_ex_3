@@ -732,22 +732,7 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     }
     //kill mutex
     release_mutex_resources();
-//    pthread_mutex_destroy(&pthreadToContainer_Map_mutex);
-//
-//    pthread_mutex_destroy(&pthreadToContainer_Reduce_mutex);
-//
-//    pthread_mutex_destroy(&nextValue_mutex);
-//
-//    pthread_mutex_destroy(&logFile_mutex);
-//
-//    pthread_mutex_destroy(&check_time_mutex);
-//
-//    pthread_mutex_destroy(&finished_Map_Threads_mutex);
-//
-//    for (auto &map: mutex_map)
-//    {
-//        pthread_mutex_destroy(&map.second);
-//    }
+
     return output_vector;
 
 }
