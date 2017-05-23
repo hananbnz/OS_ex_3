@@ -15,27 +15,24 @@
 #include <sys/time.h>
 #include <iostream>
 
-
 using namespace std;
+typedef unsigned long unsign_l;
+typedef unsigned int unsign_i;
+
 
 // -------------------------------- Constants ---------------------------------
 
 /**
  * CHUNK_SIZE 10
- * @brief  the value of a chunk size
+ * @brief  the value of a chunk size for each thread
  */
 #define CHUNK_SIZE 10
+
 /**
  * TIME_MEASURE_FAIL -1
  * @brief  the value the function gettimeofday return when an error occured.
  */
 #define TIME_MEASURE_FAIL -1
-
-/**
- * FUNC_FAIL -1
- * @brief  A const value representing function failure
- */
-#define FUNC_FAIL -1
 
 /**
  * SEC_TO_NANO_CONST 1000000000
@@ -61,19 +58,19 @@ using namespace std;
  */
 #define FUNC_SUCCESS 0
 
-typedef unsigned long unsign_l;
-typedef unsigned int unsign_i;
+
 
 // ----------------------------- Global variables ---------------------------
 
 
 /**
- *
+ * A boolean variable to determine if the framework is responsible for
+ * releasing resources
  */
 bool deleteV2K2 = false;
 
 /**
- *
+ * A boolean variable represents if the mapping finished
  */
 bool finishedMapThreads = false;
 
@@ -82,8 +79,14 @@ bool finishedMapThreads = false;
  */
 unsign_l next_pair_to_read = 0;
 
+/**
+ * An ofstream for log file handling
+ */
 ofstream outputFile;
 
+/**
+ * A char array for log file handling
+ */
 char buf[LOG_BUF_SIZE];
 
 // -------------------------- Mutexes / Semaphores ----------------------------
@@ -104,19 +107,12 @@ pthread_mutex_t emit3_insert = PTHREAD_MUTEX_INITIALIZER;
 
 sem_t shuffle_sem;
 
-//lock/unlock result varaiables
-//int res;
-
 int sem_val;
-
 
 // -------------------------- SHARED DATA STRUCTURES  ------------------------
 
-
 typedef std::pair<k2Base*, v2Base*> mapped_item;
 typedef std::vector<mapped_item> mapped_vector;
-
-//typedef vector<v2Base*> shuffled_vec;//TODO combine type from MapReduceFrameworkto
 typedef std::pair<k2Base*, V2_VEC> shuffled_item;
 
 vector<mapped_item> garbage_collector;
@@ -290,6 +286,26 @@ void release_mutex_resources()
     for (auto &map: mutex_map)
     {
         pthread_mutex_destroy(&map.second);
+    }
+}
+
+/**
+ *
+ */
+void release_V2_K2_resources()
+{
+    for (unsign_i l = 0; l < shuffledVector.size(); ++l)
+    {
+        if(shuffledVector[l].first != nullptr)
+        {
+            for (unsign_i i = 0; i < shuffledVector[l].second.size(); ++i)
+            {
+                delete shuffledVector[l].second[i];
+                shuffledVector[l].second[i] = nullptr;
+            }
+            delete shuffledVector[l].first;
+            shuffledVector[l].first = nullptr;
+        }
     }
 }
 
@@ -549,6 +565,49 @@ void *ExecReduceFunc(void*)
     pthread_exit(NULL);
 }
 
+
+/**
+ *
+ * @param multiThreadLevel
+ */
+void map_threads_creation_and_run(int multiThreadLevel)
+{
+    for (int i = 0; i < multiThreadLevel; ++i)
+    {
+        // Threads creation and map running
+        pthread_t ExecMap;
+        int thread_res = pthread_create(&ExecMap, NULL, ExecMapFunc, NULL);
+        if(thread_res != 0) framework_function_fail(pthread_create_fail);
+        pthread_mutex_t container_mutex = PTHREAD_MUTEX_INITIALIZER;
+        mutex_map[ExecMap] = container_mutex;
+        multiThreadLevel_threads_Map.push_back(ExecMap);
+        pthreadToContainer_Map[ExecMap];
+        log_file_message(create_threadTypeMap + get_cur_time()+"\n");
+    }
+}
+
+void reduce_threads_creation_and_run(int multiThreadLevel)
+{
+    for (int i = 0; i < multiThreadLevel; ++i)
+    {
+        pthread_t ExecReduce;
+        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
+        if(reduce_res != 0) framework_function_fail(pthread_create_fail);
+        multiThreadLevel_threads_Reduce.push_back(ExecReduce);
+        pthreadToContainer_Reduce[ExecReduce];
+        log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
+    }
+}
+
+/**
+ * This function runs and manages the Map-Reduce Framework.
+ * @param mapReduce A reference to a MapReduceBase
+ * @param itemsVec An IN_ITEMS_VEC(contains all input data)
+ * @param multiThreadLevel An integer (representing number of threads)
+ * @param autoDeleteV2K2 A boolean - true means the framework need to release
+ * resources otherwise not.
+ * @return An OUT_ITEMS_VEC holds the MapReduce framework output
+ */
 OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
                                     IN_ITEMS_VEC&itemsVec,
                                     int multiThreadLevel,
@@ -571,77 +630,43 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     // initialize semaphore for shuffle
     int sem_res = sem_init(&shuffle_sem, 0, 0);
-    if (sem_res != 0)
-    {
-        framework_function_fail(sem_init_fail);
-    }
+    if (sem_res != 0) framework_function_fail(sem_init_fail);
 
     //LOCKING pthreadToContainer mutex
     int res = pthread_mutex_lock(&pthreadToContainer_Map_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
 
-    //----Third start MAPPING-----
+
+    //-----------start MAPPING---------
     input_vec = itemsVec;
-    for (int i = 0; i < multiThreadLevel; ++i)
-    {
-        pthread_t newExecMap;
-        int thread_res = pthread_create(&newExecMap, NULL, ExecMapFunc, NULL);
-        if(thread_res != 0)
-        {
-            framework_function_fail(pthread_create_fail);
-        }
-        pthread_mutex_t container_mutex = PTHREAD_MUTEX_INITIALIZER;
-        mutex_map[newExecMap] = container_mutex;
-        multiThreadLevel_threads_Map.push_back(newExecMap);
-        pthreadToContainer_Map[newExecMap];
-        log_file_message(create_threadTypeMap + get_cur_time()+"\n");
-    }
+    map_threads_creation_and_run(multiThreadLevel);
 
     // if pthreadToContainer is initialized unlock pthreadToContainer mutex
     if (pthreadToContainer_Map.size() == (unsign_i)multiThreadLevel)
     {//UNLOCKING pthreadToContainer mutex
-        int res = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_unlock_fail);
-        }
+        int res_map = pthread_mutex_unlock(&pthreadToContainer_Map_mutex);
+        if(res_map != 0) framework_function_fail(pthread_mutex_unlock_fail);
     }
 
-    // -----Forth SHUFFLE-----
+    // ----------------- SHUFFLE -----------
     pthread_t shuffleThread;
     int thread_res = pthread_create(&shuffleThread, NULL, shuffle, NULL);
     log_file_message(create_threadTypeShuffle + get_cur_time()+"\n");
-    if(thread_res != 0)
-    {
-        framework_function_fail(pthread_create_fail);
-    }
+    if(thread_res != 0) framework_function_fail(pthread_create_fail);
     for (int j = 0; j < multiThreadLevel; ++j) // join the ExecMap threads
     {
-        int res = pthread_join(multiThreadLevel_threads_Map[j], NULL);
-        if (res != 0)
-        {
-            framework_function_fail(pthread_join_fail);
-        }
+        int res_join1 = pthread_join(multiThreadLevel_threads_Map[j], NULL);
+        if (res_join1 != 0) framework_function_fail(pthread_join_fail);
     }
-    res  = pthread_mutex_lock(&finished_Map_Threads_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
-    finishedMapThreads = true;
-    res  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
-    res = pthread_join(shuffleThread, NULL); // join the Shuffle thread
-    if (res != 0)
-    {
-        framework_function_fail(pthread_join_fail);
-    }
+    //after join threads finished mapping
+    int res_fin  = pthread_mutex_lock(&finished_Map_Threads_mutex);
+    if(res_fin != 0) framework_function_fail(pthread_mutex_lock_fail);
+    finishedMapThreads = true; // change finished map threads flag
+    res_fin  = pthread_mutex_unlock(&finished_Map_Threads_mutex);
+    if(res_fin != 0) framework_function_fail(pthread_mutex_unlock_fail);
+    // join the Shuffle thread
+    int res_join2 = pthread_join(shuffleThread, NULL);
+    if (res_join2 != 0) framework_function_fail(pthread_join_fail);
     //end TIME
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
     {
@@ -652,7 +677,8 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(time_for_Map_and_shuffle + to_string(total_time)
                      + time_format);
 
-    //------Fifth REDUCE-----
+
+    //--------------------REDUCE-----------------
     //start TIME
     // Map&Shuffle measure time
     if (gettimeofday(&start_time, NULL) == TIME_MEASURE_FAIL)
@@ -662,43 +688,23 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
 
     //LOCKING pthreadToContainer reduce mutex
     res = pthread_mutex_lock(&pthreadToContainer_Reduce_mutex);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
 
     //creates reduce pthreads
-    for (int i = 0; i < multiThreadLevel; ++i)
-    {
-        pthread_t ExecReduce;
-        int reduce_res = pthread_create(&ExecReduce, NULL, ExecReduceFunc,NULL);
-        if(reduce_res != 0)
-        {
-            framework_function_fail(pthread_create_fail);
-        }
-        multiThreadLevel_threads_Reduce.push_back(ExecReduce);
-        pthreadToContainer_Reduce[ExecReduce];
-        log_file_message(create_threadTypeReduce + get_cur_time()+"\n");
-    }
+    reduce_threads_creation_and_run(multiThreadLevel);
 
     //UNLOCKING pthreadToContainer reduce mutex
     if (pthreadToContainer_Reduce.size() >= (unsign_i)multiThreadLevel)
     {
         //unlocking mutex
-        int res = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
-        if(res != 0)
-        {
-            framework_function_fail(pthread_mutex_unlock_fail);
-        }
+        int res_red = pthread_mutex_unlock(&pthreadToContainer_Reduce_mutex);
+        if(res_red != 0) framework_function_fail(pthread_mutex_unlock_fail);
     }
     //join the ExecMap threads
     for (int k = 0; k < multiThreadLevel; ++k)
     {
-        int res = pthread_join(multiThreadLevel_threads_Reduce[k], NULL);
-        if (res != 0)
-        {
-            framework_function_fail(pthread_join_fail);
-        }
+        int res_join3 = pthread_join(multiThreadLevel_threads_Reduce[k], NULL);
+        if (res_join3 != 0) framework_function_fail(pthread_join_fail);
     }
     //end TIME
     if (gettimeofday(&end_time, NULL) == TIME_MEASURE_FAIL)
@@ -711,129 +717,53 @@ OUT_ITEMS_VEC RunMapReduceFramework(MapReduceBase& mapReduce,
     log_file_message(finish_MapReduceFramwork);
     closing_log_file();
 
-
-    //------And last SORT and return output-------
+    //---------------SORT and return output---------
     std::sort(output_vector.begin(), output_vector.end(), sort_pred());
-    if(deleteV2K2)
-    {
-        for (unsign_i l = 0; l < shuffledVector.size(); ++l)
-        {
-            if(shuffledVector[l].first != nullptr)
-            {
-                for (unsign_i i = 0; i < shuffledVector[l].second.size(); ++i)
-                {
-                    delete shuffledVector[l].second[i];
-                    shuffledVector[l].second[i] = nullptr;
-                }
-                delete shuffledVector[l].first;
-                shuffledVector[l].first = nullptr;
-            }
-        }
-    }
-    //kill mutex
+    //release V2/K2 resources
+    if(deleteV2K2) release_V2_K2_resources();
+    //kill mutexes
     release_mutex_resources();
-
     return output_vector;
-
 }
 
+/**
+ * This function adds a new pair of <k2,v2> to the framework's internal data
+ * structure.
+ * @param key pointer to a k2Base object to add
+ * @param val pointer to a v2Base object to add
+ */
 void Emit2 (k2Base* key, v2Base* val)
 {
-    int res = pthread_mutex_lock(&mutex_map[pthread_self()]);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    // lock current thread container mutex before adding
+    int res_mutex = pthread_mutex_lock(&mutex_map[pthread_self()]);
+    if(res_mutex != 0) framework_function_fail(pthread_mutex_lock_fail);
 
+    //add new pair
     mapped_item new_pair = pair<k2Base*, v2Base*>(key, val);
     pthreadToContainer_Map[pthread_self()].push_back(new_pair);
     //Increment semaphore
     int sem_res = sem_post(&shuffle_sem);
-    if(sem_res != 0)
-    {
-        framework_function_fail(sem_post_fail);
-    }
+    if(sem_res != 0) framework_function_fail(sem_post_fail);
 
-    res = pthread_mutex_unlock(&mutex_map[pthread_self()]);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    // unlock current thread container mutex after adding
+    res_mutex = pthread_mutex_unlock(&mutex_map[pthread_self()]);
+    if(res_mutex != 0) framework_function_fail(pthread_mutex_unlock_fail);
 }
 
+/**
+ * This function adds a pair of<k3,v3> to the final output vector
+ * @param key pointer to a k3Base object to add
+ * @param val pointer to a v3Base object to add
+ */
 void Emit3 (k3Base* key, v3Base* val)
 {
+    // lock emit3 mutex before adding
     int res = pthread_mutex_lock(&emit3_insert);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_lock_fail);
-    }
+    if(res != 0) framework_function_fail(pthread_mutex_lock_fail);
+    // add new pair to output_vector
     output_vector.push_back(pair<k3Base*, v3Base*>(key, val));
     res = pthread_mutex_unlock(&emit3_insert);
-    if(res != 0)
-    {
-        framework_function_fail(pthread_mutex_unlock_fail);
-    }
+    // unlock emit3 mutex before adding
+    if(res != 0) framework_function_fail(pthread_mutex_unlock_fail);
 }
 
-
-//ExecReduce
- //create a container for each thread
- //mapped_vector* newMapVec = new mapped_vector;
-//    pthreadToContainer.insert(pair<pthread_t,
-//            mapped_vector>(pthread_self(), newMapVec));
-//    mapped_vector* newMapVec = new mapped_vector;
-//    pthreadToContainer[pthread_self()];
-
-//erase pair
-//map<thread, vector<pair<k2Base*, v2Base*> >>
-//it->second = vector<pair<k2Base*, v2Base*>
-//                for (int j = 0; j < it->second.size(); ++j)
-//                {
-//                    if(!(*newKey < *(it->second[j].first)) && !(*(it->second[j].first) < *newKey))
-//                    {
-//
-//                        pair<k2Base*, v2Base*> pair_to_delete =  it->second[j];
-//                        it->second.erase(it->second.begin() + j);
-//                        if(deleteV2K2)
-//                        {
-////                            delete pair_to_delete.first;
-////                            delete pair_to_delete.second;
-//                        }
-//                        break;
-//                    }
-//                }
-//                it->second.pop_back();
-
-//emit2
-// check what thread is running with self() and use the ID as a key
-// add to the shared container {<key - thread ID, val- thread map output container>}
-//    printf("called Emit2\n");
-//    fflush(stdout);
-
-
-//emit3
-//create shuffle thread with the creation of execMap threads
-//merge all containers with the same key
-//converts list of <k2,v2> to list <k2,list(v2)>
-// check what thread is running with self() and use the ID as a key
-// add to the shared container {<key - thread ID, val- thread map output container>}
-//    mapped_item new_pair = pair<k3Base*, v3Base*>(key, val);
-
-
-/////void prepare_to_reduce()
-//{
-//    for( map<k2Base*, shuffled_vec>::iterator it = shuffledContainer.begin(); it != shuffledContainer.end(); ++it )
-//    {
-//        printf("size %d\n", it->second.size());
-//        fflush(stdout);
-//        shuffledVector.push_back(shuffled_item(it->first, it->second));
-//    }
-//}
-
-//execMap function
-//    mapped_vector newMapVec = new mapped_vector;
-//    pthreadToContainer[pthread_self()]; // = newMapVec;
-//    pthreadToContainer.insert(pair<pthread_t,
-//            mapped_vector>(pthread_self(), newMapVec));
-//    MapReduceBase& mapReduce1 = (MapReduceBase&)mapReduce;
