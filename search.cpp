@@ -197,16 +197,14 @@ void MapReduceSearch::Reduce(const k2Base *const key, const V2_VEC &vals) const
 // -------------------------------- Functions ----------------------------------
 
 /**
- *
- * @param programArguments
- * @param numOfArg
- * @return
+ * This function prepares the input for the map framework
+ * @param programArguments An array of char(represents program arguments)
+ * @param numOfArg An integer(represents the number of program arguments)
+ * @return An IN_ITEMS_VEC variable(containing a data prepare to map)
  */
 IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 {
-    IN_ITEMS_VEC input_items_vec (numOfArg-2); // TODO check intialize values
-    //TODO make pairs of (K1,V1), where V1 is the first arg - the word to search
-    // and the K1's are the filenames arguments.
+    IN_ITEMS_VEC input_items_vec ((unsigned long)numOfArg-2);
     WordToSearch* v1 = new WordToSearch(programArguments[1]);
     for (int i = 2; i < numOfArg ; ++i)
     {
@@ -218,7 +216,7 @@ IN_ITEMS_VEC prepareToMap(char* programArguments[], int numOfArg)
 }
 
 /**
- *
+ * This function release resources
  */
 void release_resources()
 {
@@ -238,14 +236,16 @@ void release_resources()
     }
 }
 
-
 // -------------------------------- Main Function -----------------------------
 
 /**
- * 
- * @param argc 
- * @param argv 
- * @return 
+ * Runs the Search program:
+ * Gets arguments - word to search and directories to search into and prints
+ * all word found according to the format:"word1 word2 wor3...word".
+ * this function returns 0 on success
+ * @param argc  An integer(represents the number of program arguments)
+ * @param argv An array of char(represents program arguments)
+ * @return 0 on success
 // */
 int main(int argc, char * argv[])
 {
@@ -253,18 +253,19 @@ int main(int argc, char * argv[])
     {
         fprintf(stderr, "%s\n", thread_init_fail.c_str());
         exit(1);
-
     }
     if(argc == VALID_ARG_NUM)
     {
         return FUNC_SUCCESS;
     }
+    //Initialize MapReduceFramework parameters
     mapInput = prepareToMap(argv, argc);
     MapReduceSearch m;
+    //Runs the MapReduceFramework
     search_output_vector = RunMapReduceFramework(m, mapInput,
                                                  MULTI_THREADS_LEVEL,
                                                  frameworkDeleteResources);
-        // values
+    //print search output
     for (unsigned int i = 0; i < search_output_vector.size(); ++i) {
         const FileName *name = (const FileName *)
                 (search_output_vector[i].first);
@@ -281,12 +282,9 @@ int main(int argc, char * argv[])
             }
         }
     }
+    //release resources and return success
     release_resources();
     mapInput.clear();
     search_output_vector.clear();
     return FUNC_SUCCESS;
 }
-
-//os os2015/exercise myFolder
-
-
