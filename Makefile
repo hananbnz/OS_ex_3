@@ -3,7 +3,7 @@ CFLAGS = -Wall
 STD = -std=c++11 -pthread -g
 FLAG = -c
 FLAG2 = -o
-FILES = MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
+FILES = MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
 FILES2 = search.cpp MapReduceFramework.h MapReduceClient.h
 CLEAN = MapReduceFramework.a search.o MapReduceFramework.o ex3.tar
 TARSRCS = MapReduceFramework.cpp search.cpp README Makefile
@@ -16,7 +16,7 @@ Search: search.o MapReduceFramework.a
 	$(CC) $(CFLAGS) $(STD) search.o MapReduceFramework.a -o Search
 
 #object files
-MapReduceFramework.o: MapReduceClient.cpp MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
+MapReduceFramework.o: MapReduceFramework.h MapReduceFramework.cpp MapReduceClient.h
 	$(CC) $(CFLAGS) $(STD) $(FLAG) $(FILES)
 
 
@@ -38,6 +38,6 @@ val:
 
 
 clean:
-	-rm -f $(CLEAN)
+	-rm -f *.o *.gch $(CLEAN)
 
 .PHONY:clean ,all, tar
